@@ -14,13 +14,14 @@
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
-      <a class="brand-logo" href="/#top" aria-label="Amuse Hair Salon home"><img src="../amuse-logo.svg" alt="Amuse Hair Salon" /></a>
+      <a class="brand-logo" href="../index.html#top" aria-label="Amuse Hair Salon home"><img src="../amuse-logo.svg" alt="Amuse Hair Salon" /></a>
       <nav class="main-nav" aria-label="Main navigation">
-        <a href="#services-list">Services</a>
-        <a href="/#about">Our salon</a>
-        <a href="/#visit">Visit us</a>
+        <a href="../services/index.html">Services</a>
+        <a href="../gallery/index.html">Gallery</a>
+        <a href="../about/index.html">Our salon</a>
+        <a href="../contact/index.html">Visit us</a>
       </nav>
-      <a class="button button-small" href="https://wa.me/?text=Hi%20Amuse%20Hair%20Salon%2C%20I%27d%20like%20to%20enquire%20about%20your%20services." target="_blank" rel="noopener noreferrer">Chat on WhatsApp <span aria-hidden="true">↗</span></a>
+      <a class="button button-small" href="https://wa.me/60166163818?text=Hi%20Amuse%20Hair%20Studio%2C%20I%E2%80%99d%20like%20to%20ask%20about%20your%20hair%20services" target="_blank" rel="noopener noreferrer">BOOK NOW <span aria-hidden="true">↗</span></a>
       <button class="menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false"><span></span><span></span></button>
     </header>
 
@@ -29,7 +30,6 @@
         <p class="eyebrow">Amuse Hair Salon</p>
         <h1>Services</h1>
         <p class="services-page-lede">A good result starts with a good conversation. We’ll listen first, then bring care and technical know-how to every appointment.</p>
-        <p class="services-page-image-note">Temporary styling references are shown for direction only. They are not Amuse clients or salon work.</p>
       </header>
 
       <div class="services-page-list" id="services-list">
@@ -37,72 +37,96 @@
           <span class="services-category-number">01</span>
           <div class="services-category-heading"><h2 id="hair-colour-title">Hair Colour</h2></div>
           <ul class="services-category-list">
-            <li>Basic Color</li>
-            <li>Root Touch Up</li>
-            <li>Highlight</li>
-            <li>Balayage / Ombre</li>
-            <li>Men's Color</li>
-            <li>Men's Bleach</li>
+            <li><button class="service-trigger" type="button" data-description="Refresh regrowth and seamlessly blend your roots with your existing color." data-meta="1–1.5 hrs · From RM130">Root Touch Up</button></li>
+            <li><button class="service-trigger" type="button" data-description="A personalized all-over color to refresh, deepen, or transform your look." data-meta="1.5–2.5 hrs · From RM180">Basic Color</button></li>
+            <li><button class="service-trigger" type="button" data-description="Add dimension and light with carefully placed highlights for a natural or defined finish." data-meta="2–4 hrs · From RM280">Highlight</button></li>
+            <li><button class="service-trigger" type="button" data-description="Create dimensional, blended color with a seamless transition from darker roots to lighter lengths." data-meta="3–5 hrs · From RM480">Balayage / Ombre</button></li>
           </ul>
           <figure class="services-category-image services-colour-image">
             <!-- Temporary Unsplash reference: https://unsplash.com/photos/a-woman-with-bright-red-hair-is-posing-for-a-picture-Fb9KVsESmnw . Replace with authentic Amuse photography when available. -->
-            <img src="https://images.unsplash.com/photo-1687298668922-b4dd3653877d?auto=format&fit=crop&w=1400&q=85" srcset="https://images.unsplash.com/photo-1687298668922-b4dd3653877d?auto=format&fit=crop&w=800&q=85 800w, https://images.unsplash.com/photo-1687298668922-b4dd3653877d?auto=format&fit=crop&w=1600&q=85 1600w" sizes="(max-width: 620px) 100vw, (max-width: 1000px) 48vw, 560px" alt="Fashion portrait of a model with vivid red hair. Temporary styling reference, not Amuse salon work." loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1687298668922-b4dd3653877d?auto=format&fit=crop&w=1400&q=85" srcset="https://images.unsplash.com/photo-1687298668922-b4dd3653877d?auto=format&fit=crop&w=800&q=85 800w, https://images.unsplash.com/photo-1687298668922-b4dd3653877d?auto=format&fit=crop&w=1600&q=85 1600w" sizes="(max-width: 620px) 100vw, (max-width: 1000px) 48vw, 560px" alt="Fashion portrait of a model with vivid red hair." loading="lazy" />
           </figure>
-        </section>
-
-        <section class="services-category services-category-perm" id="perm-texture" aria-labelledby="perm-texture-title">
-          <figure class="services-category-image services-perm-image">
-            <!-- Temporary Unsplash reference: https://unsplash.com/photos/woman-with-curly-hair-in-a-dress-posing-XK892ZVsMkY . Replace with authentic Amuse photography when available. -->
-            <img src="https://images.unsplash.com/photo-1774379456542-28f9697809a4?auto=format&fit=crop&w=1200&q=85" srcset="https://images.unsplash.com/photo-1774379456542-28f9697809a4?auto=format&fit=crop&w=720&q=85 720w, https://images.unsplash.com/photo-1774379456542-28f9697809a4?auto=format&fit=crop&w=1400&q=85 1400w" sizes="(max-width: 620px) 100vw, (max-width: 1000px) 42vw, 500px" alt="Fashion model with naturally defined curls in a dark studio portrait. Temporary styling reference, not Amuse salon work." loading="lazy" />
-          </figure>
-          <span class="services-category-number">02</span>
-          <div class="services-category-heading"><h2 id="perm-texture-title">Perm &amp; Texture</h2></div>
-          <ul class="services-category-list">
-            <li>Cold Perm</li>
-            <li>Digital Perm</li>
-            <li>Men's Perm</li>
-          </ul>
         </section>
 
         <section class="services-category services-category-cut" id="haircut-styling" aria-labelledby="haircut-styling-title">
-          <span class="services-category-number">03</span>
+          <span class="services-category-number">02</span>
           <div class="services-category-heading"><h2 id="haircut-styling-title">Haircut &amp; Styling</h2></div>
-          <ul class="services-category-list">
-            <li>Men's Cut</li>
-            <li>Ladies' Cut</li>
-            <li>Wash &amp; Blow</li>
-            <li>Styling</li>
-          </ul>
           <figure class="services-category-image services-cut-image">
             <!-- Temporary Unsplash reference: https://unsplash.com/photos/man-with-orange-tinted-sunglasses-and-short-hair-3Y7IUFN9Anc . Replace with authentic Amuse photography when available. -->
-            <img src="https://images.unsplash.com/photo-1761882437323-7afbbdd0a2d3?auto=format&fit=crop&w=1400&q=85" srcset="https://images.unsplash.com/photo-1761882437323-7afbbdd0a2d3?auto=format&fit=crop&w=800&q=85 800w, https://images.unsplash.com/photo-1761882437323-7afbbdd0a2d3?auto=format&fit=crop&w=1600&q=85 1600w" sizes="(max-width: 620px) 100vw, (max-width: 1000px) 48vw, 560px" alt="Fashion portrait of a man with a close cropped haircut. Temporary styling reference, not Amuse salon work." loading="lazy" />
+            <img src="https://images.unsplash.com/photo-1761882437323-7afbbdd0a2d3?auto=format&fit=crop&w=1400&q=85" srcset="https://images.unsplash.com/photo-1761882437323-7afbbdd0a2d3?auto=format&fit=crop&w=800&q=85 800w, https://images.unsplash.com/photo-1761882437323-7afbbdd0a2d3?auto=format&fit=crop&w=1600&q=85 1600w" sizes="(max-width: 620px) 100vw, (max-width: 1000px) 48vw, 560px" alt="Fashion portrait of a man with a close cropped haircut." loading="lazy" />
           </figure>
+          <ul class="services-category-list">
+            <li><button class="service-trigger" type="button" data-description="A clean, tailored cut designed around your features and everyday style." data-meta="45–60 min · From RM38">Men’s Cut</button></li>
+            <li><button class="service-trigger" type="button" data-description="A refined cut shaped to complement your face, texture, and personal style." data-meta="60–90 min · From RM60">Ladies’ Cut</button></li>
+            <li><button class="service-trigger" type="button" data-description="A fresh wash and polished blow-dry for effortless, everyday movement." data-meta="30–45 min · From RM35">Wash &amp; Blow</button></li>
+            <li><button class="service-trigger" type="button" data-description="A finishing touch for a polished look, from soft waves to sleek styling." data-meta="30–60 min · From RM35">Styling</button></li>
+          </ul>
         </section>
 
         <section class="services-category services-category-treatment" id="hair-treatment" aria-labelledby="hair-treatment-title">
-          <span class="services-category-number">04</span>
+          <span class="services-category-number">03</span>
           <div class="services-category-heading"><h2 id="hair-treatment-title">Hair Treatment</h2></div>
           <ul class="services-category-list">
-            <li>Moisture Treatment</li>
-            <li>Japanese Repair Treatment</li>
-            <li>Scalp Treatment</li>
-            <li>Essential 6step Scalp Treatment</li>
-            <li>Keratin Treatment</li>
+            <li><button class="service-trigger" type="button" data-description="A focused treatment to refresh the scalp and create a clean, balanced foundation for healthy-looking hair." data-meta="45–60 min · From RM138">Scalp Treatment</button></li>
+            <li><button class="service-trigger" type="button" data-description="Smooth and soften unruly hair for a polished finish with improved manageability." data-meta="2–3 hrs · From RM288">Keratin Treatment</button></li>
+            <li><button class="service-trigger" type="button" data-description="Restore moisture and softness for hair that feels smoother, healthier, and more manageable." data-meta="45–60 min · From RM138">Moisture Treatment</button></li>
+            <li><button class="service-trigger" type="button" data-description="A restorative treatment designed to revive damaged hair and improve its overall condition." data-meta="60–90 min · From RM238">Japanese Repair Treatment</button></li>
+            <li><button class="service-trigger" type="button" data-description="A comprehensive scalp-care ritual combining multiple steps for a refreshed and revitalized scalp." data-meta="60–90 min · From RM238">Essential 6-Step Scalp Treatment</button></li>
           </ul>
+          <figure class="services-category-image services-treatment-image" data-modal-image="false">
+            <img src="https://images.pexels.com/photos/3993290/pexels-photo-3993290.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" alt="Hairstylist performing a hair treatment on a client." loading="lazy" decoding="async" />
+          </figure>
         </section>
 
-        <section class="services-category services-category-rebonding" id="rebonding-relaxing" aria-labelledby="rebonding-relaxing-title">
-          <span class="services-category-number">05</span>
-          <div class="services-category-heading"><h2 id="rebonding-relaxing-title">Rebonding &amp; Relaxing</h2></div>
+        <section class="services-category services-category-men" id="men" aria-labelledby="men-title">
+          <span class="services-category-number">04</span>
+          <div class="services-category-heading"><h2 id="men-title">Men</h2></div>
           <ul class="services-category-list">
-            <li>Rebonding / Relaxing</li>
-            <li>Men's Rebonding</li>
+            <li><button class="service-trigger" type="button" data-description="Refresh your look with a carefully chosen color tailored to your style." data-meta="1.5–2.5 hrs · From RM130">Men’s Color</button></li>
+            <li><button class="service-trigger" type="button" data-description="Lighten and transform your hair for a brighter, bolder finish." data-meta="2–3 hrs · From RM100">Men’s Bleach</button></li>
+            <li><button class="service-trigger" type="button" data-description="Create a smoother, straighter finish with a sleek, refined result." data-meta="2.5–3.5 hrs · From RM180">Men’s Rebonding</button></li>
+            <li><button class="service-trigger" type="button" data-description="Add texture, movement, and shape with a perm tailored to your desired look." data-meta="2–3 hrs · From RM180">Men’s Perm</button></li>
+          </ul>
+          <figure class="services-category-image services-men-image" data-modal-image="false">
+            <img src="https://images.pexels.com/photos/6487145/pexels-photo-6487145.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" alt="Fashion portrait of a man with a contemporary hairstyle." loading="lazy" decoding="async" />
+          </figure>
+        </section>
+
+        <section class="services-category services-category-chemical" id="hair-chemical" aria-labelledby="hair-chemical-title">
+          <figure class="services-category-image services-perm-image">
+            <!-- Temporary Unsplash reference: https://unsplash.com/photos/woman-with-curly-hair-in-a-dress-posing-XK892ZVsMkY . Replace with authentic Amuse photography when available. -->
+            <img src="https://images.unsplash.com/photo-1774379456542-28f9697809a4?auto=format&fit=crop&w=1200&q=85" srcset="https://images.unsplash.com/photo-1774379456542-28f9697809a4?auto=format&fit=crop&w=720&q=85 720w, https://images.unsplash.com/photo-1774379456542-28f9697809a4?auto=format&fit=crop&w=1400&q=85 1400w" sizes="(max-width: 620px) 100vw, (max-width: 1000px) 42vw, 500px" alt="Fashion model with naturally defined curls in a dark studio portrait." loading="lazy" />
+          </figure>
+          <span class="services-category-number">05</span>
+          <div class="services-category-heading"><h2 id="hair-chemical-title">Hair Chemical</h2></div>
+          <ul class="services-category-list">
+            <li><button class="service-trigger" type="button" data-description="Smooth and reshape the hair for a straighter, sleeker, and more controlled finish." data-meta="2.5–4 hrs · From RM280">Rebonding / Relaxing</button></li>
+            <li><button class="service-trigger" type="button" data-description="Create lasting texture and movement with a classic perm technique." data-meta="2–3 hrs · From RM180">Cold Perm</button></li>
+            <li><button class="service-trigger" type="button" data-description="Create soft, defined curls and waves with a modern digital perm technique." data-meta="2.5–4 hrs · From RM280">Digital Perm</button></li>
           </ul>
         </section>
       </div>
     </main>
 
-    <footer class="site-footer"><a class="brand-logo" href="/#top" aria-label="Amuse Hair Salon home"><img src="../amuse-logo.svg" alt="Amuse Hair Salon" /></a><span>Good hair, good mood.</span><span>© <span id="year">2026</span> Amuse Hair Salon · Kuala Lumpur</span></footer>
+    <dialog class="service-dialog" aria-labelledby="service-dialog-title">
+      <div class="service-dialog-layout">
+        <button class="service-dialog-close" type="button" aria-label="Close service details">×</button>
+        <figure class="service-dialog-media" hidden>
+          <img alt="" />
+        </figure>
+        <div class="service-dialog-info">
+          <div class="service-dialog-content">
+            <p class="service-dialog-kicker"></p>
+            <h2 id="service-dialog-title"></h2>
+            <p class="service-dialog-description"></p>
+            <p class="service-dialog-meta"></p>
+          </div>
+          <a class="button service-dialog-cta" href="https://wa.me/60166163818" target="_blank" rel="noopener noreferrer">BOOK NOW <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+    </dialog>
+
+    <footer class="site-footer"><a class="brand-logo" href="../index.html#top" aria-label="Amuse Hair Salon home"><img src="../amuse-logo.svg" alt="Amuse Hair Salon" /></a><span>© <span id="year">2026</span> Amuse Hair Salon · Kuala Lumpur</span></footer>
     <script src="../script.js" defer></script>
   </body>
 </html>
