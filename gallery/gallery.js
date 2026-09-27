@@ -7,6 +7,7 @@ if (galleryPhotos.length && galleryLightbox) {
   const previousButton = galleryLightbox.querySelector('.gallery-lightbox-previous');
   const nextButton = galleryLightbox.querySelector('.gallery-lightbox-next');
   const count = galleryLightbox.querySelector('.gallery-lightbox-count');
+  const isChinesePage = document.documentElement.lang === 'zh-CN';
   let activeIndex = 0;
   let openingPhoto = null;
   let touchStart = null;
@@ -18,7 +19,9 @@ if (galleryPhotos.length && galleryLightbox) {
 
     lightboxImage.src = photo.dataset.full;
     lightboxImage.alt = thumbnail.alt;
-    count.textContent = `Photo ${activeIndex + 1} of ${galleryPhotos.length}`;
+    count.textContent = isChinesePage
+      ? `第 ${activeIndex + 1} 张，共 ${galleryPhotos.length} 张`
+      : `Photo ${activeIndex + 1} of ${galleryPhotos.length}`;
   };
 
   const openPhoto = (photo) => {

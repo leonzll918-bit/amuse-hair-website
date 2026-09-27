@@ -1,17 +1,24 @@
 const menuButton = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('.main-nav');
+const isChinesePage = document.documentElement.lang === 'zh-CN';
+
+const setNavigationLabel = (isOpen) => {
+  const englishLabel = isOpen ? 'Close navigation' : 'Open navigation';
+  const chineseLabel = isOpen ? '关闭导航' : '打开导航';
+  menuButton.setAttribute('aria-label', isChinesePage ? chineseLabel : englishLabel);
+};
 
 menuButton.addEventListener('click', () => {
   const isOpen = menuButton.getAttribute('aria-expanded') === 'true';
   menuButton.setAttribute('aria-expanded', String(!isOpen));
-  menuButton.setAttribute('aria-label', isOpen ? 'Open navigation' : 'Close navigation');
+  setNavigationLabel(!isOpen);
   navigation.classList.toggle('is-open', !isOpen);
 });
 
 navigation.addEventListener('click', (event) => {
   if (event.target.closest('a')) {
     menuButton.setAttribute('aria-expanded', 'false');
-    menuButton.setAttribute('aria-label', 'Open navigation');
+    setNavigationLabel(false);
     navigation.classList.remove('is-open');
   }
 });
