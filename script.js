@@ -30,16 +30,27 @@ document.addEventListener('click', (event) => {
   const target = event.target instanceof Element ? event.target : event.target?.parentElement;
   const link = target?.closest('a[href]');
   if (!link || !/^(?:https?:)?\/\/(?:wa\.me|(?:api\.)?whatsapp\.com)(?:\/|$)/i.test(link.href)) return;
-  if (typeof window.gtag !== 'function') return;
 
-  window.gtag('event', 'whatsapp_click', {
+  const service = getWhatsAppService(link);
+  const ctaLocation = getWhatsAppCtaLocation(link);
+  const gtagType = typeof window.gtag;
+  const eventParams = {
     page_location: window.location.href,
-    page_path: `${window.location.pathname}${window.location.search}`,
+    page_path: window.location.pathname,
     link_url: link.href,
-    cta_location: getWhatsAppCtaLocation(link),
-    service: getWhatsAppService(link)
+    cta_location: ctaLocation,
+    service
+  };
+
+  console.info('[GA4 DEBUG] whatsapp_click fired', {
+    link_url: link.href,
+    cta_location: ctaLocation,
+    service,
+    'typeof window.gtag': gtagType
   });
-});
+
+  if (gtagType === 'function') window.gtag('event', 'whatsapp_click', eventParams);
+}, true);
 
 const setNavigationLabel = (isOpen) => {
   const englishLabel = isOpen ? 'Close navigation' : 'Open navigation';
