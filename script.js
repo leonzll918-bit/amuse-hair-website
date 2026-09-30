@@ -2,6 +2,45 @@ const menuButton = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('.main-nav');
 const isChinesePage = document.documentElement.lang === 'zh-CN';
 
+const getWhatsAppService = (link) => {
+  const dialog = link.closest('.service-dialog');
+  const serviceTitle = dialog?.querySelector('#service-dialog-title')?.textContent || '';
+  const serviceCategory = dialog?.querySelector('.service-dialog-kicker')?.textContent || '';
+  const serviceText = `${link.dataset.service || ''} ${serviceTitle} ${serviceCategory} ${link.getAttribute('aria-label') || ''} ${link.textContent || ''}`.toLowerCase();
+
+  if (/treatment|scalp|repair|keratin|护理|修护/.test(serviceText)) return 'treatment';
+  if (/colour|color|bleach|染发|漂发/.test(serviceText)) return 'colour';
+  if (/perm|texture|烫发|纹理/.test(serviceText)) return 'perm';
+  if (/haircut|hair cut|\bcut\b|styling|剪发|理发|造型/.test(serviceText)) return 'haircut';
+  return 'general';
+};
+
+const getWhatsAppCtaLocation = (link) => {
+  if (link.matches('[data-cta-location="floating_whatsapp"], .floating-whatsapp, .whatsapp-float')) return 'floating_whatsapp';
+  if (link.closest('.service-dialog, .services-page')) return 'service_page';
+  if (link.closest('.site-header')) return 'header';
+  if (link.closest('.hero')) return 'hero';
+  if (link.closest('.site-footer, footer')) return 'footer';
+  if (link.closest('.contact-page, .contact-primary, .visit, .visit-whatsapp')) return 'contact';
+  if (link.closest('.about-page')) return 'about';
+  return 'general';
+};
+
+document.addEventListener('click', (event) => {
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  const link = target?.closest('a[href]');
+  if (!link || !/^(?:https?:)?\/\/(?:wa\.me|(?:api\.)?whatsapp\.com)(?:\/|$)/i.test(link.href)) return;
+  if (typeof window.gtag !== 'function') return;
+
+  window.gtag('event', 'whatsapp_click', {
+    page_location: window.location.href,
+    page_path: `${window.location.pathname}${window.location.search}`,
+    link_url: link.href,
+    cta_location: getWhatsAppCtaLocation(link),
+    service: getWhatsAppService(link)
+  });
+});
+
 const setNavigationLabel = (isOpen) => {
   const englishLabel = isOpen ? 'Close navigation' : 'Open navigation';
   const chineseLabel = isOpen ? '关闭导航' : '打开导航';
