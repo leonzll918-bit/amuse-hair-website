@@ -1,0 +1,57 @@
+/* Hair Colour pages only; shared Amuse tokens, navigation and buttons stay intact. */
+.colour-page{max-width:var(--content);margin:0 auto;padding:0 var(--editorial-edge) 72px}
+.colour-page h1{max-width:750px;font-size:clamp(48px,6.2vw,82px);line-height:1.02;letter-spacing:-.045em}
+.colour-page h2{max-width:820px;font-size:clamp(34px,4vw,52px);line-height:1.08;letter-spacing:-.035em}
+.colour-page h3{margin:0 0 10px;font-family:var(--serif);font-size:28px;font-weight:500;line-height:1.2;letter-spacing:-.02em}
+.colour-page p{max-width:70ch;color:var(--muted)}
+.colour-page .button{max-width:100%;padding:13px 20px;text-align:center;line-height:1.5}
+.colour-hero{padding:68px 0 58px;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:end;gap:48px}
+.colour-brand{margin-bottom:18px;font-size:15px}
+.colour-lede{font-size:17px;line-height:1.8;margin:0}
+.colour-consultation{padding:26px;background:var(--soft);border-radius:10px}
+.colour-consultation .colour-note{margin:16px 0 0;font-size:13px}
+.colour-section{padding:48px 0;border-top:1px solid var(--line)}
+.colour-section:last-child{padding-bottom:0}
+.colour-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:28px}
+.colour-card{min-width:0;padding:22px;background:var(--soft);border-radius:10px}
+.colour-card p{margin:0;font-size:14px}
+.colour-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.colour-compare dl{margin:18px 0 0}
+.colour-compare dl>div{padding:12px 0;border-top:1px solid var(--line)}
+.colour-compare dt{font-size:12px;color:var(--muted)}
+.colour-compare dd{margin:4px 0 0}
+.colour-preparation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px;padding-left:24px;margin-bottom:0}
+.colour-preparation li{padding-left:8px}
+.colour-preparation li::marker{color:var(--muted)}
+.colour-preparation p{margin:0}
+.colour-results{padding:24px;border:1px dashed var(--line);border-radius:10px}
+.colour-results p{margin:0}
+.colour-page details{border-bottom:1px solid var(--line);padding:16px 0}
+.colour-page summary{cursor:pointer;font-size:16px;font-weight:500;min-height:44px;padding:8px 0}
+.colour-page summary:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+.colour-page details p{margin:8px 0 12px}
+.colour-related{margin:24px 0 0}
+.colour-page .text-link{display:inline-block;min-height:44px;padding-top:10px;font-size:14px}
+.colour-location-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px;margin:28px 0}
+.colour-location-grid address{font-style:normal}
+.colour-hours{margin:0}
+.colour-hours>div{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)}
+.colour-hours dd{margin:0}
+.colour-final{padding:26px;background:var(--soft);border-radius:10px}
+.colour-final p{margin-bottom:16px}
+@media(max-width:850px){
+  .colour-hero{grid-template-columns:minmax(0,1fr);gap:28px;padding-top:48px}
+  .colour-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .colour-page{padding:0 22px 48px}
+  .colour-hero{padding:38px 0;gap:24px}
+  .colour-page h1{font-size:clamp(43px,11vw,64px)}
+  .colour-page h2{font-size:clamp(32px,8vw,42px)}
+  .colour-page h3{font-size:25px}
+  .colour-lede{font-size:15px}
+  .colour-consultation,.colour-card,.colour-final{padding:20px}
+  .colour-section{padding:34px 0}
+  .colour-grid,.colour-compare,.colour-preparation,.colour-location-grid{grid-template-columns:minmax(0,1fr);gap:18px}
+  .colour-page .button{width:100%}
+}
