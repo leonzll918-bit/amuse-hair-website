@@ -872,3 +872,14 @@ html[lang="zh-CN"] .contact-page .contact-detail h2{font-size:19px;letter-spacin
   .site-header .menu-toggle span{width:19px;height:1px;background:var(--ink)}
 }
 @media(max-width:620px){.site-header .main-nav{top:69px}}
+
+@media(max-width:760px){
+  .site-header .menu-toggle{width:44px;height:44px;flex:0 0 44px;align-items:center;justify-content:center;padding:0}
+  .site-header .main-nav>a,
+  .site-header .main-nav .language-switch a{display:inline-flex;min-height:40px;align-items:center}
+}
+@media(max-width:620px){
+  .hero-copy{height:calc(74vw + 125px);min-height:400px}
+  .site-header>.button{min-height:40px;white-space:nowrap;flex-shrink:0}
+}
+@media(max-width:350px){.site-header .brand-logo{width:122px}}
