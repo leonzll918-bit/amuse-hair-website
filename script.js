@@ -42,13 +42,6 @@ if (!window.__amuseWhatsAppTrackingBound) {
       service
     };
 
-    console.info('[GA4 DEBUG] whatsapp_click fired', {
-      link_url: link.href,
-      cta_location: ctaLocation,
-      service,
-      'typeof window.gtag': gtagType
-    });
-
     if (gtagType === 'function') window.gtag('event', 'whatsapp_click', eventParams);
   }, true);
 }
@@ -107,7 +100,10 @@ if (serviceDialog) {
       serviceDialogDescription.textContent = trigger.dataset.description;
       serviceDialogMeta.textContent = trigger.dataset.meta;
       serviceDialogCta.dataset.service = allowedWhatsAppServices.has(trigger.dataset.service) ? trigger.dataset.service : 'general';
-      serviceDialogCta.href = `https://wa.me/60166163818?text=${encodeURIComponent(`Hi Amuse Hair Studio, I’d like to ask about ${serviceName}`)}`;
+      const serviceMessage = isChinesePage
+        ? `你好 Amuse Hair Studio，我想咨询${serviceName}服务。`
+        : `Hi Amuse Hair Studio, I’d like to ask about ${serviceName}`;
+      serviceDialogCta.href = `https://wa.me/60166163818?text=${encodeURIComponent(serviceMessage)}`;
 
       if (image) {
         serviceDialogImage.src = image.currentSrc || image.src;
