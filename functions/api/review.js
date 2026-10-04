@@ -27,21 +27,10 @@ function json(data, status = 200) {
   });
 }
 
-function extractOutputText(payload) {
-  if (!payload || !Array.isArray(payload.output)) return '';
-
-  return payload.output
-    .flatMap((item) => (item && item.type === 'message' && Array.isArray(item.content) ? item.content : []))
-    .filter((part) => part && part.type === 'output_text' && typeof part.text === 'string')
-    .map((part) => part.text)
-    .join('\n')
-    .trim();
-}
-
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (!env.OPENAI_API_KEY) {
+  if (!env.DEEPSEEK_API_KEY) {
     return json({ error: 'Review generator is not configured.' }, 503);
   }
 
@@ -77,9 +66,9 @@ export async function onRequestPost(context) {
     ? 'Write in natural Simplified Chinese used by a real customer in Malaysia. Keep it conversational, not formal or promotional.'
     : 'Write in natural conversational English used by a real customer. Keep it concise and not promotional.';
 
-  const instructions = [
+  const systemPrompt = [
     'You help a salon customer turn their own selections into a Google review draft.',
-    'Use ONLY the facts supplied in the user input.',
+    'Use ONLY the facts supplied in the user message.',
     'The selected star rating represents the customer\'s overall sentiment, so the tone may reflect that rating.',
     'Do not invent staff names, prices, waiting times, hair condition, specific techniques, specific results, or any other details that were not supplied.',
     'Do not claim the salon is the best, award-winning, cheap, or otherwise make marketing claims.',
@@ -92,7 +81,7 @@ export async function onRequestPost(context) {
     languageInstruction,
   ].join(' ');
 
-  const input = JSON.stringify({
+  const userPrompt = JSON.stringify({
     business: 'Amuse Hair Studio',
     service,
     rating,
@@ -101,18 +90,20 @@ export async function onRequestPost(context) {
 
   let upstream;
   try {
-    upstream = await fetch('https://api.openai.com/v1/responses', {
+    upstream = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${env.DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: env.OPENAI_REVIEW_MODEL || 'gpt-5.6-luna',
-        reasoning: { effort: 'none' },
-        instructions,
-        input,
-        max_output_tokens: 180,
+        model: env.DEEPSEEK_REVIEW_MODEL || 'deepseek-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        stream: false,
+        max_tokens: 220,
       }),
     });
   } catch (_) {
@@ -121,12 +112,18 @@ export async function onRequestPost(context) {
 
   if (!upstream.ok) {
     const detail = await upstream.text().catch(() => '');
-    console.error('OpenAI review generation failed', upstream.status, detail.slice(0, 500));
+    console.error('DeepSeek review generation failed', upstream.status, detail.slice(0, 500));
     return json({ error: 'Review generation service is temporarily unavailable.' }, 502);
   }
 
-  const payload = await upstream.json();
-  const review = extractOutputText(payload);
+  let payload;
+  try {
+    payload = await upstream.json();
+  } catch (_) {
+    return json({ error: 'Review generation service returned an invalid response.' }, 502);
+  }
+
+  const review = payload?.choices?.[0]?.message?.content?.trim?.() || '';
 
   if (!review) {
     return json({ error: 'No review draft was generated.' }, 502);
