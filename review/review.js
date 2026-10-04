@@ -48,29 +48,35 @@
 
   const positiveMap = {
     'Loved the result': 'I was really happy with the result',
-    'Friendly stylist': 'the stylist was friendly',
-    'Good consultation': 'the consultation was clear and helpful',
-    'Comfortable salon': 'the salon felt comfortable',
-    'Good service': 'the service was good throughout my visit',
+    'Friendly stylist': 'The stylist was friendly',
+    'Good consultation': 'The consultation was clear and helpful',
+    'Comfortable salon': 'The salon felt comfortable',
+    'Good service': 'The service was good throughout my visit',
     'Would come again': 'I would be happy to come back again',
   };
 
   const negativeMap = {
-    'Long waiting time': 'the waiting time was longer than I expected',
-    'Result was not what I expected': 'the final result was not quite what I expected',
+    'Long waiting time': 'The waiting time was longer than I expected',
+    'Result was not what I expected': 'The final result was not quite what I expected',
   };
 
   function joinNatural(parts) {
     if (parts.length === 0) return '';
     if (parts.length === 1) return parts[0];
-    if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
-    return `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)}`;
+    if (parts.length === 2) return `${parts[0]} and ${parts[1].replace(/^./, (c) => c.toLowerCase())}`;
+    const normalized = parts.map((part, index) => index === 0 ? part : part.replace(/^./, (c) => c.toLowerCase()));
+    return `${normalized.slice(0, -1).join(', ')}, and ${normalized.at(-1)}`;
   }
 
   function servicePhrase() {
-    return state.service === 'Other'
-      ? 'during a recent visit'
-      : `for ${state.service.toLowerCase()}`;
+    const phrases = {
+      'Hair Colour': 'for hair colour',
+      'Hair Treatment': 'for a hair treatment',
+      'Haircut': 'for a haircut',
+      'Perm': 'for a perm',
+      'Other': 'during a recent visit',
+    };
+    return phrases[state.service] || 'during a recent visit';
   }
 
   function generateDraft() {
