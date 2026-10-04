@@ -1,4 +1,5 @@
 (() => {
+  const REVIEW_API_URL = 'https://amuse-review-api.abbylim1116.workers.dev';
   const state = { service: '', rating: 0, tags: [], language: 'en' };
   const serviceButtons = [...document.querySelectorAll('[data-group="service"] .choice')];
   const starButtons = [...document.querySelectorAll('[data-group="rating"] .star')];
@@ -62,7 +63,7 @@
     });
 
     try {
-      const response = await fetch('/api/review', {
+      const response = await fetch(REVIEW_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -94,7 +95,7 @@
         rating: state.rating,
         tag_count: state.tags.length,
         language,
-        generator: 'openai',
+        generator: 'deepseek',
       });
     } catch (error) {
       console.error(error);
