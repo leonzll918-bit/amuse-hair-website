@@ -1,7 +1,10 @@
 (() => {
   const REVIEW_API_URL = 'https://amuse-review-api.abbylim1116.workers.dev';
-  const state = { service: '', rating: 0, tags: [], language: 'en' };
-  const serviceButtons = [...document.querySelectorAll('[data-group="service"] .choice')];
+  const state = { services: [], rating: 0, tags: [], language: 'en' };
+  const serviceCategories = [...document.querySelectorAll('.service-category')];
+  const serviceParents = [...document.querySelectorAll('.service-parent')];
+  const serviceChildren = [...document.querySelectorAll('.service-child')];
+  const serviceExpanders = [...document.querySelectorAll('.service-expand')];
   const starButtons = [...document.querySelectorAll('[data-group="rating"] .star')];
   const tagButtons = [...document.querySelectorAll('[data-group="tags"] .tag')];
   const languageButtons = [...document.querySelectorAll('.language-button')];
@@ -23,11 +26,49 @@
     }
   };
 
-  serviceButtons.forEach((button) => {
+  const syncServicesFromUI = () => {
+    const selected = [
+      ...serviceParents.filter((button) => button.classList.contains('is-selected')),
+      ...serviceChildren.filter((button) => button.classList.contains('is-selected')),
+    ];
+    state.services = selected.map((button) => button.dataset.value);
+  };
+
+  serviceExpanders.forEach((button) => {
     button.addEventListener('click', () => {
-      serviceButtons.forEach((item) => item.classList.remove('is-selected'));
-      button.classList.add('is-selected');
-      state.service = button.dataset.value;
+      const category = button.closest('.service-category');
+      const children = category.querySelector('.service-children');
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      children.hidden = expanded;
+    });
+  });
+
+  serviceParents.forEach((button) => {
+    button.addEventListener('click', () => {
+      const category = button.closest('.service-category');
+      const children = [...category.querySelectorAll('.service-child')];
+      const willSelect = !button.classList.contains('is-selected');
+
+      button.classList.toggle('is-selected', willSelect);
+      if (willSelect) {
+        children.forEach((child) => child.classList.remove('is-selected'));
+      }
+      syncServicesFromUI();
+    });
+  });
+
+  serviceChildren.forEach((button) => {
+    button.addEventListener('click', () => {
+      const category = button.closest('.service-category');
+      const parent = category.querySelector('.service-parent');
+      const willSelect = !button.classList.contains('is-selected');
+
+      button.classList.toggle('is-selected', willSelect);
+      if (willSelect) {
+        parent.classList.remove('is-selected');
+      }
+      syncServicesFromUI();
     });
   });
 
@@ -50,8 +91,8 @@
   });
 
   async function generateDraft(language) {
-    if (!state.service || !state.rating) {
-      generationStatus.textContent = 'Please choose your service and rating first.';
+    if (!state.services.length || !state.rating) {
+      generationStatus.textContent = 'Please choose at least one service and a rating first.';
       return;
     }
 
@@ -67,7 +108,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          service: state.service,
+          services: state.services,
           rating: state.rating,
           tags: state.tags,
           language,
@@ -91,7 +132,8 @@
       draftPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       track('review_generate', {
-        service: state.service,
+        services: state.services.join(' | '),
+        service_count: state.services.length,
         rating: state.rating,
         tag_count: state.tags.length,
         language,
@@ -121,7 +163,8 @@
         ? '已复制。你可以粘贴到 Google 评论，并在发布前自行修改。'
         : 'Copied. You can paste it into Google Review and edit anything you like.';
       track('review_copy', {
-        service: state.service,
+        services: state.services.join(' | '),
+        service_count: state.services.length,
         rating: state.rating,
         language: state.language,
       });
@@ -136,7 +179,8 @@
 
   googleLink.addEventListener('click', () => {
     track('review_google_open', {
-      service: state.service,
+      services: state.services.join(' | '),
+      service_count: state.services.length,
       rating: state.rating,
       language: state.language,
     });
@@ -144,7 +188,8 @@
 
   privateFeedback.addEventListener('click', () => {
     track('review_private_feedback', {
-      service: state.service,
+      services: state.services.join(' | '),
+      service_count: state.services.length,
       rating: state.rating,
       language: state.language,
     });
