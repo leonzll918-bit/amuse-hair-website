@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#faf8f5" />
+  <meta name="robots" content="noindex,follow" />
+  <meta name="description" content="Share your experience with Amuse Hair Studio. Generate a review draft from your own selections, then copy it to Google Reviews." />
+  <title>Share Your Experience | Amuse Hair Studio</title>
+  <link rel="canonical" href="https://amuse.com.my/review/" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/review/review.css" />
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KLT9P6CWTJ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-KLT9P6CWTJ');
+  </script>
+</head>
+<body>
+  <main class="review-shell" id="main">
+    <section class="review-card" aria-labelledby="review-title">
+      <div class="review-brand">Amuse Hair Studio</div>
+      <h1 id="review-title">Share your experience</h1>
+      <p class="review-intro">Choose what matches your real visit. We’ll turn your selections into a short draft you can edit before posting.</p>
+
+      <form id="review-form" novalidate>
+        <fieldset>
+          <legend>1. What service did you have?</legend>
+          <div class="option-grid service-grid" data-group="service">
+            <button type="button" class="choice" data-value="Hair Colour">Hair Colour</button>
+            <button type="button" class="choice" data-value="Hair Treatment">Hair Treatment</button>
+            <button type="button" class="choice" data-value="Haircut">Haircut</button>
+            <button type="button" class="choice" data-value="Perm">Perm</button>
+            <button type="button" class="choice" data-value="Other">Other</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>2. How would you rate your experience?</legend>
+          <div class="stars" data-group="rating" aria-label="Choose a rating from 1 to 5">
+            <button type="button" class="star" data-value="1" aria-label="1 star">★</button>
+            <button type="button" class="star" data-value="2" aria-label="2 stars">★</button>
+            <button type="button" class="star" data-value="3" aria-label="3 stars">★</button>
+            <button type="button" class="star" data-value="4" aria-label="4 stars">★</button>
+            <button type="button" class="star" data-value="5" aria-label="5 stars">★</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. What matched your experience? <span>Choose any</span></legend>
+          <div class="option-grid tag-grid" data-group="tags">
+            <button type="button" class="choice tag" data-value="Loved the result">Loved the result</button>
+            <button type="button" class="choice tag" data-value="Friendly stylist">Friendly stylist</button>
+            <button type="button" class="choice tag" data-value="Good consultation">Good consultation</button>
+            <button type="button" class="choice tag" data-value="Comfortable salon">Comfortable salon</button>
+            <button type="button" class="choice tag" data-value="Good service">Good service</button>
+            <button type="button" class="choice tag" data-value="Would come again">Would come again</button>
+            <button type="button" class="choice tag" data-value="Long waiting time">Long waiting time</button>
+            <button type="button" class="choice tag" data-value="Result was not what I expected">Result was not what I expected</button>
+          </div>
+        </fieldset>
+
+        <div class="review-actions">
+          <button type="button" class="button" id="generate-review">Write my review</button>
+          <p class="review-note">Your draft is based only on the options you choose. You can edit it before posting.</p>
+        </div>
+      </form>
+
+      <section class="draft-panel" id="draft-panel" hidden aria-live="polite">
+        <h2>Your review draft</h2>
+        <textarea id="review-draft" rows="7" aria-label="Editable review draft"></textarea>
+        <div class="draft-actions">
+          <button type="button" class="button" id="copy-review">Copy review</button>
+          <a class="button button-secondary" id="open-google" href="https://g.page/r/CdTPuN2LebNNEBM/review" target="_blank" rel="noopener noreferrer">Open Google Review</a>
+        </div>
+        <p class="copy-status" id="copy-status" aria-live="polite"></p>
+        <a class="private-feedback" id="private-feedback" href="https://wa.me/60166163818?text=Hi%20Amuse%20Hair%20Studio%2C%20I%27d%20like%20to%20share%20some%20private%20feedback%20about%20my%20recent%20visit." target="_blank" rel="noopener noreferrer" hidden>Tell us more privately on WhatsApp</a>
+      </section>
+    </section>
+  </main>
+
+  <script src="/review/review.js" defer></script>
+</body>
+</html>
