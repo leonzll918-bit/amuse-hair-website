@@ -115,7 +115,7 @@
 
         <fieldset>
           <legend>3. What matched your experience? <span>Choose any</span></legend>
-          <div class="option-grid tag-grid" data-group="tags">
+          <div class="option-grid tag-grid" data-group="general-tags">
             <button type="button" class="choice tag" data-value="Loved the result">Loved the result</button>
             <button type="button" class="choice tag" data-value="Friendly stylist">Friendly stylist</button>
             <button type="button" class="choice tag" data-value="Good consultation">Good consultation</button>
@@ -124,6 +124,13 @@
             <button type="button" class="choice tag" data-value="Would come again">Would come again</button>
             <button type="button" class="choice tag" data-value="Long waiting time">Long waiting time</button>
             <button type="button" class="choice tag" data-value="Result was not what I expected">Result was not what I expected</button>
+          </div>
+
+          <div class="service-tag-panel" id="service-tag-panel" hidden>
+            <div class="experience-divider"></div>
+            <p class="service-tag-heading">More about your service <span>Optional</span></p>
+            <p class="service-tag-help">These options change based on the services you selected.</p>
+            <div class="option-grid tag-grid service-tag-grid" id="service-specific-tags" aria-live="polite"></div>
           </div>
         </fieldset>
 
