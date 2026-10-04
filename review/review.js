@@ -67,6 +67,12 @@
     return `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)}`;
   }
 
+  function servicePhrase() {
+    return state.service === 'Other'
+      ? 'during a recent visit'
+      : `for ${state.service.toLowerCase()}`;
+  }
+
   function generateDraft() {
     if (!state.service || !state.rating) {
       copyStatus.textContent = 'Please choose your service and rating first.';
@@ -78,18 +84,24 @@
 
     let intro;
     if (state.rating >= 4) {
-      intro = `I visited Amuse Hair Studio for ${state.service.toLowerCase()} and had a good experience.`;
+      intro = `I visited Amuse Hair Studio ${servicePhrase()} and had a good experience.`;
     } else if (state.rating === 3) {
-      intro = `I visited Amuse Hair Studio for ${state.service.toLowerCase()}. My experience was mixed overall.`;
+      intro = `I visited Amuse Hair Studio ${servicePhrase()}. My experience was mixed overall.`;
     } else {
-      intro = `I visited Amuse Hair Studio for ${state.service.toLowerCase()} and wanted to share my experience.`;
+      intro = `I visited Amuse Hair Studio ${servicePhrase()} and wanted to share my experience.`;
     }
 
     const sentences = [intro];
     if (positive.length) sentences.push(`${joinNatural(positive)}.`);
     if (negative.length) sentences.push(`${joinNatural(negative)}.`);
     if (!positive.length && !negative.length) {
-      sentences.push('This draft is intentionally simple so I can edit it to match my own experience before posting.');
+      if (state.rating >= 4) {
+        sentences.push('Overall, I was happy with my visit.');
+      } else if (state.rating === 3) {
+        sentences.push('There were things I liked and things that could have been better.');
+      } else {
+        sentences.push('My experience did not fully meet my expectations.');
+      }
     }
 
     draft.value = sentences.join(' ');
