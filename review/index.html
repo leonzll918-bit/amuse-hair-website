@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#faf8f5" />
   <meta name="robots" content="noindex,follow" />
-  <meta name="description" content="Share your experience with Amuse Hair Studio. Generate a review draft from your own selections, then copy it to Google Reviews." />
+  <meta name="description" content="Share your experience with Amuse Hair Studio. Generate an AI-assisted review draft from your own selections, then copy it to Google Reviews." />
   <title>Share Your Experience | Amuse Hair Studio</title>
   <link rel="canonical" href="https://amuse.com.my/review/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -27,7 +27,7 @@
     <section class="review-card" aria-labelledby="review-title">
       <div class="review-brand">Amuse Hair Studio</div>
       <h1 id="review-title">Share your experience</h1>
-      <p class="review-intro">Choose what matches your real visit. We’ll turn your selections into a short draft you can edit before posting.</p>
+      <p class="review-intro">Choose what matches your real visit. AI will turn your selections into a short draft you can edit before posting.</p>
 
       <form id="review-form" novalidate>
         <fieldset>
@@ -67,13 +67,17 @@
         </fieldset>
 
         <div class="review-actions">
-          <button type="button" class="button" id="generate-review">Write my review</button>
-          <p class="review-note">Your draft is based only on the options you choose. You can edit it before posting.</p>
+          <div class="language-actions" aria-label="Choose review language">
+            <button type="button" class="button language-button" id="generate-review-en" data-language="en">Write in English</button>
+            <button type="button" class="button language-button" id="generate-review-zh" data-language="zh">生成中文评论</button>
+          </div>
+          <p class="review-note">The draft uses only the service, rating and experience options you select. You can edit it before posting.</p>
+          <p class="generation-status" id="generation-status" aria-live="polite"></p>
         </div>
       </form>
 
       <section class="draft-panel" id="draft-panel" hidden aria-live="polite">
-        <h2>Your review draft</h2>
+        <h2 id="draft-title">Your review draft</h2>
         <textarea id="review-draft" rows="7" aria-label="Editable review draft"></textarea>
         <div class="draft-actions">
           <button type="button" class="button" id="copy-review">Copy review</button>
