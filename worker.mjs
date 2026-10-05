@@ -28,8 +28,14 @@ function secureHeaders(headers = new Headers()) {
   return headers;
 }
 
-function blocked(request, status = 403) {
+function blocked(request, status = 403, env) {
   const headers = secureHeaders();
+  if (status === 503) {
+    headers.set('X-Review-QR-Type', typeof env.REVIEW_QR_TOKEN);
+    headers.set('X-Review-QR-Length', String(env.REVIEW_QR_TOKEN ?? '').length);
+    headers.set('X-Review-Signing-Type', typeof env.REVIEW_ACCESS_SIGNING_KEY);
+    headers.set('X-Review-Signing-Length', String(env.REVIEW_ACCESS_SIGNING_KEY ?? '').length);
+  }
   headers.set('Content-Type', 'text/html; charset=utf-8');
   const html = `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -106,7 +112,7 @@ export default {
     // A missing or invalid configuration must never expose the static page.
     if (typeof env.REVIEW_QR_TOKEN !== 'string' || env.REVIEW_QR_TOKEN.length < 32 ||
         typeof env.REVIEW_ACCESS_SIGNING_KEY !== 'string' || env.REVIEW_ACCESS_SIGNING_KEY.length < 32) {
-      return blocked(request, 503);
+      return blocked(request, 503, env);
     }
     const key = await signingKey(env.REVIEW_ACCESS_SIGNING_KEY);
     const now = Math.floor(Date.now() / 1000);
