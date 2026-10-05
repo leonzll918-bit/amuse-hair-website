@@ -30,12 +30,6 @@ function secureHeaders(headers = new Headers()) {
 
 function blocked(request, status = 403, env) {
   const headers = secureHeaders();
-  if (status === 503) {
-    headers.set('X-Review-QR-Type', typeof env.REVIEW_QR_TOKEN);
-    headers.set('X-Review-QR-Length', String(env.REVIEW_QR_TOKEN ?? '').length);
-    headers.set('X-Review-Signing-Type', typeof env.REVIEW_ACCESS_SIGNING_KEY);
-    headers.set('X-Review-Signing-Length', String(env.REVIEW_ACCESS_SIGNING_KEY ?? '').length);
-  }
   headers.set('Content-Type', 'text/html; charset=utf-8');
   const html = `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
