@@ -42,8 +42,10 @@ function makeHarness(responses = []) {
   const events = [];
   const requests = [];
   const serviceParent = element({ value: 'Basic Color' });
+  const alternativeServiceParent = element({ value: 'Hair Treatment' });
   const serviceCategory = { querySelectorAll: () => [] };
   serviceParent.closest = () => serviceCategory;
+  alternativeServiceParent.closest = () => serviceCategory;
   const stars = Array.from({ length: 5 }, (_, index) => element({ value: String(index + 1) }));
   const tags = ['Loved the result', 'Good consultation', 'Friendly stylist']
     .map((value) => element({ value }));
@@ -67,7 +69,7 @@ function makeHarness(responses = []) {
   const document = {
     querySelectorAll(selector) {
       return new Map([
-        ['.service-parent', [serviceParent]],
+        ['.service-parent', [serviceParent, alternativeServiceParent]],
         ['.service-child', []],
         ['.service-expand', []],
         ['[data-group="rating"] .star', stars],
@@ -101,7 +103,7 @@ function makeHarness(responses = []) {
     await click(stars[4]);
   };
   const generate = async (language = 'en') => click(languages.find((button) => button.dataset.language === language));
-  return { events, requests, stylists, languages, tags, stars, serviceParent, byId, click, prepare, generate, context };
+  return { events, requests, stylists, languages, tags, stars, serviceParent, alternativeServiceParent, byId, click, prepare, generate, context };
 }
 
 const names = (harness) => harness.events.map(({ name }) => name);
@@ -136,7 +138,48 @@ test('failed regeneration preserves the baseline and edit state without a regene
   assert.deepEqual(names(h), ['review_generate', 'review_edited', 'review_copy', 'review_google_open']);
   assert.equal(h.byId.get('review-draft').value, 'Edited original draft.');
   assert.equal(eventParams(h, 'review_edited')[0].language, 'en');
+  assert.equal(eventParams(h, 'review_copy')[0].language, 'en');
+  assert.equal(eventParams(h, 'review_google_open')[0].services, 'Basic Color');
+  assert.equal(eventParams(h, 'review_google_open')[0].rating, 5);
   assert.equal(h.requests.length, 2);
+});
+
+test('Copy after a failed Chinese regeneration keeps the original English draft context', async () => {
+  const h = makeHarness([
+    { ok: true, body: { review: 'Original English draft.' } },
+    { ok: false, status: 503, body: { error: 'Unavailable' } },
+  ]);
+  await h.prepare();
+  await h.generate('en');
+  await h.generate('zh');
+  await h.click(h.byId.get('copy-review'));
+  assert.equal(h.byId.get('review-draft').value, 'Original English draft.');
+  assert.deepEqual(names(h), ['review_generate', 'review_copy']);
+  assert.deepEqual(
+    { ...eventParams(h, 'review_copy')[0] },
+    { page_path: '/review/', services: 'Basic Color', service_count: 1, rating: 5, language: 'en' },
+  );
+});
+
+test('Copy and Google Open use the successful draft context after unsaved service/rating changes', async () => {
+  const h = makeHarness([{ ok: true, body: { review: 'Draft for context A.' } }]);
+  await h.prepare();
+  await h.generate('en');
+
+  await h.click(h.serviceParent);
+  await h.click(h.alternativeServiceParent);
+  await h.click(h.stars[2]);
+  await h.click(h.byId.get('copy-review'));
+  await h.click(h.byId.get('open-google'));
+
+  const expected = { services: 'Basic Color', service_count: 1, rating: 5, language: 'en' };
+  for (const eventName of ['review_copy', 'review_google_open']) {
+    const params = eventParams(h, eventName)[0];
+    for (const [key, value] of Object.entries(expected)) assert.equal(params[key], value);
+    assert.notEqual(params.services, 'Hair Treatment');
+    assert.notEqual(params.rating, 3);
+  }
+  assert.equal(eventParams(h, 'review_generate')[0].services, 'Basic Color');
 });
 
 test('unchanged and whitespace-only Copy do not report an edit; changed text reports once across Copy and Google', async () => {
@@ -251,7 +294,8 @@ test('existing events retain safe parameters and no analytics event receives rev
   assert.ok(!serializedEvents.includes(generatedReview));
   assert.ok(!serializedEvents.includes('Abby'));
   assert.ok(h.events.every(({ params }) => !Object.hasOwn(params, 'review')));
-  assert.equal(h.requests[0].payload.tags[0], 'Loved the result');
+  assert.deepEqual(h.requests[0].payload.experience_tags, ['Loved the result']);
+  assert.equal(Object.hasOwn(h.requests[0].payload, 'tags'), false);
   assert.equal(h.requests[0].payload.rating, 5);
   assert.deepEqual(h.requests[0].payload.services, ['Basic Color']);
 });

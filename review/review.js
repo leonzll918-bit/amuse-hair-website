@@ -91,7 +91,7 @@
     language: 'en',
     stylist: null,
     generatedBaseline: null,
-    generatedBaselineLanguage: null,
+    generatedBaselineContext: null,
     editedReportedForCurrentGeneration: false,
   };
 
@@ -123,12 +123,21 @@
     }
   };
 
-  const reviewActionParams = () => ({
-    services: state.services.join(' | '),
-    service_count: state.services.length,
+  const currentReviewContext = () => state.generatedBaselineContext ?? {
+    services: [...state.services],
     rating: state.rating,
-    language: state.generatedBaselineLanguage ?? state.language,
-  });
+    language: state.language,
+  };
+
+  const reviewActionParams = () => {
+    const context = currentReviewContext();
+    return {
+      services: context.services.join(' | '),
+      service_count: context.services.length,
+      rating: context.rating,
+      language: context.language,
+    };
+  };
 
   const reportMeaningfulEdit = () => {
     if (
@@ -270,6 +279,14 @@
     state.language = language;
     stylistLabel.textContent = language === 'zh' ? '发型师（可选）' : 'Stylist (optional)';
     const tags = [...state.generalTags, ...state.serviceTags];
+    const requestContext = Object.freeze({
+      services: Object.freeze([...state.services]),
+      rating: state.rating,
+      language,
+      generalTagCount: state.generalTags.length,
+      serviceTagCount: state.serviceTags.length,
+    });
+    const requestStylist = state.stylist;
     generationStatus.textContent = language === 'zh' ? '正在生成评论…' : 'Generating your review…';
     languageButtons.forEach((button) => {
       button.disabled = true;
@@ -281,11 +298,11 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          services: state.services,
-          rating: state.rating,
-          tags,
-          language,
-          ...(state.stylist ? { stylist: state.stylist } : {}),
+          services: requestContext.services,
+          rating: requestContext.rating,
+          experience_tags: tags,
+          language: requestContext.language,
+          ...(requestStylist ? { stylist: requestStylist } : {}),
         }),
       });
 
@@ -297,7 +314,7 @@
       const isRegeneration = state.generatedBaseline !== null;
       draft.value = data.review;
       state.generatedBaseline = data.review;
-      state.generatedBaselineLanguage = language;
+      state.generatedBaselineContext = requestContext;
       state.editedReportedForCurrentGeneration = false;
       draftPanel.hidden = false;
       draftTitle.textContent = language === 'zh' ? '你的评论草稿' : 'Your review draft';
@@ -310,12 +327,12 @@
       draftPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       const generationParams = {
-        services: state.services.join(' | '),
-        service_count: state.services.length,
-        rating: state.rating,
-        general_tag_count: state.generalTags.length,
-        service_tag_count: state.serviceTags.length,
-        language,
+        services: requestContext.services.join(' | '),
+        service_count: requestContext.services.length,
+        rating: requestContext.rating,
+        general_tag_count: requestContext.generalTagCount,
+        service_tag_count: requestContext.serviceTagCount,
+        language: requestContext.language,
         generator: 'deepseek',
       };
       track('review_generate', generationParams);
@@ -347,10 +364,7 @@
         ? '已复制。你可以粘贴到 Google 评论，并在发布前自行修改。'
         : 'Copied. You can paste it into Google Review and edit anything you like.';
       track('review_copy', {
-        services: state.services.join(' | '),
-        service_count: state.services.length,
-        rating: state.rating,
-        language: state.language,
+        ...reviewActionParams(),
       });
     } catch (_) {
       draft.focus();
@@ -363,12 +377,7 @@
 
   googleLink.addEventListener('click', () => {
     reportMeaningfulEdit();
-    track('review_google_open', {
-      services: state.services.join(' | '),
-      service_count: state.services.length,
-      rating: state.rating,
-      language: state.language,
-    });
+    track('review_google_open', reviewActionParams());
   });
 
   privateFeedback.addEventListener('click', () => {
