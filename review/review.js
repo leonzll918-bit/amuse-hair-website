@@ -89,6 +89,10 @@
     generalTags: [],
     serviceTags: [],
     language: 'en',
+    stylist: null,
+    generatedBaseline: null,
+    generatedBaselineLanguage: null,
+    editedReportedForCurrentGeneration: false,
   };
 
   const serviceParents = [...document.querySelectorAll('.service-parent')];
@@ -99,6 +103,8 @@
   const serviceTagPanel = document.getElementById('service-tag-panel');
   const serviceTagGrid = document.getElementById('service-specific-tags');
   const languageButtons = [...document.querySelectorAll('.language-button')];
+  const stylistButtons = [...document.querySelectorAll('.stylist-choice')];
+  const stylistLabel = document.getElementById('stylist-label');
   const draftPanel = document.getElementById('draft-panel');
   const draftTitle = document.getElementById('draft-title');
   const draft = document.getElementById('review-draft');
@@ -115,6 +121,26 @@
         ...params,
       });
     }
+  };
+
+  const reviewActionParams = () => ({
+    services: state.services.join(' | '),
+    service_count: state.services.length,
+    rating: state.rating,
+    language: state.generatedBaselineLanguage ?? state.language,
+  });
+
+  const reportMeaningfulEdit = () => {
+    if (
+      state.generatedBaseline === null ||
+      state.editedReportedForCurrentGeneration ||
+      draft.value.trim() === state.generatedBaseline.trim()
+    ) {
+      return;
+    }
+
+    track('review_edited', reviewActionParams());
+    state.editedReportedForCurrentGeneration = true;
   };
 
   const renderServiceTags = () => {
@@ -223,6 +249,18 @@
     });
   });
 
+  stylistButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const value = button.dataset.value;
+      state.stylist = state.stylist === value ? null : value;
+      stylistButtons.forEach((item) => {
+        const selected = item.dataset.value === state.stylist;
+        item.classList.toggle('is-selected', selected);
+        item.setAttribute('aria-pressed', String(selected));
+      });
+    });
+  });
+
   async function generateDraft(language) {
     if (!state.services.length || !state.rating) {
       generationStatus.textContent = 'Please choose at least one service and a rating first.';
@@ -230,6 +268,7 @@
     }
 
     state.language = language;
+    stylistLabel.textContent = language === 'zh' ? '发型师（可选）' : 'Stylist (optional)';
     const tags = [...state.generalTags, ...state.serviceTags];
     generationStatus.textContent = language === 'zh' ? '正在生成评论…' : 'Generating your review…';
     languageButtons.forEach((button) => {
@@ -246,6 +285,7 @@
           rating: state.rating,
           tags,
           language,
+          ...(state.stylist ? { stylist: state.stylist } : {}),
         }),
       });
 
@@ -254,7 +294,11 @@
         throw new Error(data.error || 'Unable to generate review');
       }
 
+      const isRegeneration = state.generatedBaseline !== null;
       draft.value = data.review;
+      state.generatedBaseline = data.review;
+      state.generatedBaselineLanguage = language;
+      state.editedReportedForCurrentGeneration = false;
       draftPanel.hidden = false;
       draftTitle.textContent = language === 'zh' ? '你的评论草稿' : 'Your review draft';
       copyButton.textContent = language === 'zh' ? '复制评论' : 'Copy review';
@@ -265,7 +309,7 @@
       generationStatus.textContent = '';
       draftPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-      track('review_generate', {
+      const generationParams = {
         services: state.services.join(' | '),
         service_count: state.services.length,
         rating: state.rating,
@@ -273,7 +317,11 @@
         service_tag_count: state.serviceTags.length,
         language,
         generator: 'deepseek',
-      });
+      };
+      track('review_generate', generationParams);
+      if (isRegeneration) {
+        track('review_regenerate', generationParams);
+      }
     } catch (error) {
       console.error(error);
       generationStatus.textContent = language === 'zh'
@@ -294,6 +342,7 @@
   copyButton.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(draft.value.trim());
+      reportMeaningfulEdit();
       copyStatus.textContent = state.language === 'zh'
         ? '已复制。你可以粘贴到 Google 评论，并在发布前自行修改。'
         : 'Copied. You can paste it into Google Review and edit anything you like.';
@@ -313,6 +362,7 @@
   });
 
   googleLink.addEventListener('click', () => {
+    reportMeaningfulEdit();
     track('review_google_open', {
       services: state.services.join(' | '),
       service_count: state.services.length,
