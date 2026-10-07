@@ -1,6 +1,6 @@
 # Amuse Hair Studio — Current Project State
 
-Last updated: 2026-10-08 Asia/Singapore.
+Last updated: 2026-10-08 00:10 Asia/Singapore.
 
 This file is the concise shared status for ChatGPT ↔ Codex handoffs. It records
 verified evidence separately from pending checks and planned work. It is not a
@@ -21,7 +21,7 @@ Operating Protocol.
 
 - **Phase 3A:** Approved and implemented locally.
 - **Phase 3B:** Approved and implemented locally.
-- **Phase 3C:** Local implementation is in review; it is **not formally complete or approved** because the external real-workerd runtime gate failed and has not yet passed after the focused test-harness changes. Do not begin staging or production work without explicit approval.
+- **Phase 3C:** **PENDING.** The latest external real-workerd run failed during category PUT; the full real-workerd runtime gate has not passed. Do not begin staging or production work without explicit approval.
 - **Latest automated suite:** `node --test tests/*.test.mjs` — **42 passed, 0 failed**. `npm.cmd run build:assets`, syntax checks for the two focused test files, and `git diff --check` also passed. These do not substitute for external workerd HTTP validation.
 
 ## Phase 3C local implementation recorded
@@ -32,19 +32,32 @@ The local profile measured a synthetic 12 MP image at approximately **4.4 second
 
 ## External workerd failure and latest investigation
 
-The latest external real-workerd rerun passed the earlier category update check but then stopped on category deletion with HTTP 409 and `{"error":"revision_conflict"}`. The reported failure location was the category DELETE path in `tests/cms-local-runtime-check.mjs`. The external result did not include the category revision returned by the preceding update, the revision sent in DELETE, or a fresh read of the row at failure time. Therefore the precise stale value and why it differed are **not verified**. Source tracing found no category-row trigger that increments its revision as a side effect of unrelated service/media changes; the global content clock is separate. No server implementation defect is established by the evidence currently available.
+**Latest external evidence (user-run real workerd):** `POST /api/cms/categories` returned a category with `revision=1`. The following `PUT /api/cms/categories/{id}` submitted `revision=1` and returned HTTP 409 `{"error":"revision_conflict"}`. This run therefore failed at category **update**; the prior report that had advanced to category DELETE is superseded. The run stopped before later media/R2 and publish/rollback HTTP checks.
 
-**Verified contract:** category creation starts at revision 1; a successful category update increments the row revision by one and returns the saved row. Deletion is guarded by `WHERE id = ? AND revision = ?`; the API returns `revision_conflict` for a stale revision or when the guarded delete does not affect exactly one row. Category CRUD does not use publication epochs or fencing tokens.
+**Root cause:** **not yet proven.** The external report did not include an immediate GET/list revision between POST and PUT, the D1 result metadata from the attempted UPDATE, or a query showing whether the row changed. The current category revision observed by the handler, the SQL `meta.changes` value, and persisted row contents after the 409 are unknown. Consequently we cannot tell whether the API rejected the request at its initial revision comparison, whether the SQL matched/changed zero or one rows, or whether D1 result metadata was interpreted differently. No evidence establishes a Node/SQLite versus real workerd D1 semantic difference. No evidence establishes multiple Worker instances or multiple local D1 databases; instance/database topology for that run is unknown.
 
-**Latest focused test changes:** `tests/cms-local-runtime-check.mjs` asserts that update returns the incremented revision, deliberately verifies that DELETE with the pre-update revision returns 409, then re-reads the category and uses that current revision for deletion. Cleanup also re-reads before deleting and prints creation, post-update, current, and submitted revisions if deletion fails. `tests/cms-content-api.test.mjs` covers create → update/current revision → stale delete 409 → current delete 200, including a reorder-induced revision advance. No revision, epoch, fencing, authorization, or other security guard was weakened. These focused tests pass under Node’s local SQLite-backed test setup; this does not establish real-workerd HTTP behavior.
+**Verified source contract and exact generated category UPDATE:** the handler first reads the current category and returns 409 if the submitted integer revision differs. If equal, `D1ContentStore.save` runs this category statement (bound values omitted):
 
-The runtime harness cleans only identified test-owned records; it does not wipe the local CMS database. Successful previous runs may leave release history in local D1/R2 emulation; subsequent runs account for an already-active release. The revised category deletion path has **not yet passed a subsequent real-workerd rerun**.
+```sql
+UPDATE cms_service_categories
+SET anchor = ?, name_en = ?, name_zh = ?, sort_order = ?, visible = ?, content_status = ?,
+    revision = revision + 1, updated_at = CURRENT_TIMESTAMP
+WHERE id = ? AND revision = ?
+```
+
+The adapter then checks `result.success` and `result.meta?.changes === 1`; if either check fails it returns null, which the API maps to 409. On success it performs a GET and returns the saved row. **Observed real D1 mutation result shape/metadata:** not supplied. **Whether the SQL changed the row:** not observed; do not infer from the HTTP response alone, because 409 is returned both before SQL and after an unsuccessful guarded update. Category creation starting at revision 1 and the source-level increment behavior are confirmed; a post-POST GET revision was not reported.
+
+**Implementation/test changes already present locally:** no CMS server implementation change was made for this follow-up. `tests/cms-local-runtime-check.mjs` re-reads the category before editing, submits the read revision, asserts the PUT response increments revision by one, checks a stale DELETE returns 409, re-reads before current-revision DELETE, and includes revisions plus the response body in failure diagnostics. `tests/cms-content-api.test.mjs` covers create → update → stale delete 409 → current delete 200, including the reorder revision advance. The earlier local test harness change also handles existing local release state and checks failed publish leaves the active release/page unchanged. These focused tests pass on Node’s SQLite-backed adapter; that does not prove workerd D1 behavior. No authorization, revision, epoch, or fencing guard was weakened.
+
+**Diagnostics:** failure-context diagnostics remain in the local runtime test helper and include method/path, expected/actual status, response body, and supplied revision context. There is no temporary logging or diagnostic change to Worker production code. The latest failure occurred at PUT, so its supplied context includes submitted and created revisions; an immediate GET revision and D1 result metadata are not currently logged/observed.
+
+**Automated validation:** `node --test tests/*.test.mjs` — **42 passed, 0 failed**; `npm.cmd run build:assets` passed; syntax checks for `tests/cms-local-runtime-check.mjs` and `tests/cms-content-api.test.mjs` passed; `git diff --check` passed. The real-workerd HTTP rerun is still required.
 
 ### Real HTTP/workerd coverage status
 
-The latest external rerun passed the prior category update check and then stopped at category deletion. Earlier baseline English/Chinese pages, Admin local-authorized access, CMS source/config exclusion, Review QR denial, D1 reads, and category create/update checks have passed across the reported runs. This latest run did **not** reach later media/R2 or publish/rollback HTTP checks.
+Across reported runs, baseline English/Chinese pages, Admin local-authorized access, CMS source/config exclusion, Review QR denial, D1 reads, category creation, and the previously attempted category DELETE path have been exercised; the latest run failed earlier at category PUT after POST revision 1. Treat only the latest run’s sequence as current. Later media/R2, preview, publish, activation, rollback, and post-rollback HTTP checks remain pending.
 
-The updated test script is designed to exercise D1 CRUD, local media/R2 upload and thumbnail, private preview, publish-time validation failure, build/verification/activation through the publish endpoint, idempotent retry, active release and versioned asset serving, rollback and post-rollback serving, Review QR precedence, and private manifest/source exclusion. Category DELETE and all later runtime checks are **pending another external rerun**. Local loopback mode exercises authorized Admin/API requests; unauthenticated Access behavior is covered by automated tests, not by the loopback-authenticated workerd run.
+**Next external command:** with local Wrangler still running in PowerShell window #1, rerun `npm.cmd run test:cms:local` in PowerShell window #2. The test helper now prints revision context and response body on assertion failure. If PUT still returns 409, the next diagnostic must capture a GET of the test category immediately after POST and before PUT, plus the exact D1 `run()` result metadata and whether a subsequent GET shows the row changed. Do not deploy or point this command at production. Phase 3C remains **PENDING** until the full real-workerd runtime validation passes.
 
 ## Verified architecture and security decisions
 
