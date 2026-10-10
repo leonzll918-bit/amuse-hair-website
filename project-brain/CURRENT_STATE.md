@@ -22,7 +22,7 @@ Operating Protocol.
 - **Phase 3A:** Approved and implemented locally.
 - **Phase 3B:** Approved and implemented locally.
 - **Phase 3C:** **PENDING.** The latest external real-workerd run failed during pre-test cleanup at the test-owned category DELETE, before the new PUT diagnostics could run. Do not begin staging or production work without explicit approval.
-- **Latest automated suite:** `node --test tests/*.test.mjs` — **43 passed, 0 failed**. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. `npm.cmd run build` was attempted but this repository has no `build` script. These do not substitute for external workerd HTTP validation.
+- **Latest automated suite:** `node --test tests/*.test.mjs` — **44 passed, 0 failed**. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. `npm.cmd run build` was attempted but this repository has no `build` script. These do not substitute for external workerd HTTP validation.
 
 ## Phase 3C implementation and verified D1 false-conflict fix
 
@@ -64,6 +64,34 @@ Then run window #2:
 npm.cmd run test:cms:local
 ```
 Keep both outputs, especially any `cms_local_d1_category_put` or `cms_local_d1_category_delete` diagnostic event. The harness must report successful current-revision category UPDATE/DELETE behavior and continue through publish/activation/rollback checks. Do not reset or re-import local D1/R2 data. Phase 3C stays **PENDING** until the real-workerd runtime passes.
+
+## Phase 3C release CSS assertion investigation
+
+**Failure reported by external workerd:** `tests/cms-local-runtime-check.mjs` failed at the assertion “release HTML references versioned CSS.” The external run did not print the response HTML or its stylesheet links, so the exact failing response body was not captured. Inspection and deterministic regression testing identified a Worker release-pointer cache defect that can produce this assertion failure: when the Worker cached an empty active-release pointer before first activation, subsequent requests could reuse that null for up to three seconds and fall through to baseline `ASSETS`, whose homepage CSS is unversioned (`styles.css`). A later activation therefore could be followed by baseline HTML. The prior assertion only reported its message and did not expose observed CSS hrefs.
+
+**Renderer and path comparison:** the renderer generates the same expected versioned URL for English and Chinese:
+`/_cms/releases/<release-id>/assets/styles.css`, where `<release-id>` is `release-` plus a UUID. It copies the stylesheet to artifact key `assets/styles.css`; `ReleaseStorage` stores it under `releases/<release-id>/assets/styles.css`; the release manifest records that full key, SHA-256, byte size, `text/css` content type and `asset` kind. The Worker route maps the URL back to that exact R2 key and returns 404 if it is missing; it does not use baseline assets for that versioned URL. Source renderer tests now confirm the exact URL in both languages; publish integration confirms the stylesheet’s manifest/inventory entry and checksum. The CSS URL regex was not simply loosened.
+
+**Fix and coverage:** `worker.mjs` no longer caches an empty active-release pointer, so the next public page request re-reads D1 after first activation. The runtime check now reads the active release ID, waits a bounded five seconds for that exact release page (allowing a prior non-empty pointer’s short cache to expire), and then requires English and Chinese HTML to reference the exact same release CSS URL. It requests CSS over HTTP and checks status 200, `text/css`, and CSS content; it also verifies missing versioned CSS returns 404 without baseline fallback. The Node publish integration asserts CSS exists in the active release’s verified D1 asset inventory and that the stored body hash matches the inventory checksum. Regression coverage reproduces an initial empty pointer followed by activation and confirms both language pages and CSS resolve from the activated release. Existing immutable artifact, manifest verification, publication epoch/fencing, atomic activation/rollback, and Review QR behavior remain in the test suite.
+
+**Files changed for this investigation:**
+- `worker.mjs`
+- `tests/cms-local-runtime-check.mjs`
+- `tests/cms-publishing.test.mjs`
+
+**Validation:** `node --test tests/*.test.mjs` — **44 passed, 0 failed**; `npm.cmd run build:assets` passed; `git diff --check` and relevant `node --check` passed. `npm.cmd run build` was attempted but this package has no `build` script. No real workerd run was performed in the sandbox. The exact prior external HTML that triggered the assertion is unknown because that failed run did not capture its links; the deterministic stale-null-pointer scenario is now covered and fixed.
+
+**Local release-state safety:** the harness preserves local D1/R2 release history. It uses the existing active/previous release as input, creates a fresh uniquely keyed release, checks that release, and rolls back to the immediately previous release. It does not reset, wipe, re-import, or manually alter local D1/R2. Restart the local Worker to load the code change; no migration/import is required.
+
+**Next external local validation:** from the repository root, use PowerShell window #1:
+```powershell
+npm.cmd run cms:dev:local
+```
+Then PowerShell window #2:
+```powershell
+npm.cmd run test:cms:local
+```
+This is the script name present in the current `package.json` (the reported `test:cms` alias is not defined there). Keep both outputs. Phase 3C remains **PENDING** until this complete real-workerd run succeeds.
 
 ## Verified architecture and security decisions
 
