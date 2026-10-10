@@ -21,10 +21,10 @@ Operating Protocol.
 
 - **Phase 3A:** Approved and implemented locally.
 - **Phase 3B:** Approved and implemented locally.
-- **Phase 3C:** **PENDING external real-workerd validation after focused F1–F6 corrections.** Local implementation and automated validation are complete for this correction pass. No staging or production authorization.
+- **Phase 3C:** **Scoped security re-review PASS — recommendation A: APPROVE local implementation.** User reports 4 consecutive successful post-fix real local workerd HTTP runs. Automated suite 49/49 and deterministic state-comparison checks passed. Awaiting user final phase sign-off; staging and production remain unauthorized.
 - **Latest automated suite:** `node --test tests/*.test.mjs` — **49 passed, 0 failed** after the focused F1–F6 fixes. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. No real workerd HTTP run was performed in this correction pass.
 
-Historical D1/CSS investigation sections below retain earlier evidence and commands; their pending-runtime statements are superseded by the final review and the 4 user-reported successful runs.
+Historical D1/CSS and correction sections below retain earlier evidence and commands. Their pending-runtime/blocking statements are superseded by the final scoped re-review at the end of this document, including 4 consecutive user-reported post-fix workerd passes.
 
 ## Phase 3C implementation and verified D1 false-conflict fix
 
@@ -258,3 +258,94 @@ In PowerShell window #2:
 npm.cmd run test:cms:local
 ```
 The migration command applies pending local schema only and preserves records. Keep the complete test output. A pass must reach the end of the HTTP harness, including the owner-upload → bilingual Gallery association → publish → public derivative GET and release/rollback checks. If it fails, retain diagnostics and do not reset/re-import local data. Phase 3C remains **PENDING** until this real-workerd run passes. Staging and production remain unauthorized.
+
+
+## FINAL SCOPED F1–F6 SECURITY RE-REVIEW — 2026-10-11 Asia/Singapore
+
+**Final recommendation: A — APPROVE Phase 3C local implementation.** The reviewed F1–F6 corrections are supported by actual source inspection, passing existing tests, additional deterministic in-memory reproductions with complete persistent-table comparisons, and **USER-REPORTED 4 consecutive successful post-fix real local workerd HTTP runs**. These four post-fix passes are distinct from the previously reported pre-correction runs. No new external workerd execution was performed by this review. User final approval is not inferred; staging and production are not authorized.
+
+### Method and D1 semantics
+
+Read actual `cms/publishing/release-pipeline.mjs`, publishing API/storage/renderer, migrations, Worker routing, authorization, local config and tests. Reused the existing publishing test's Node SQLite D1 adapter and fixture helpers through temporary stdin review programs. Databases were exclusively `:memory:`; no durable local D1/R2 was opened, reset, imported, migrated or changed. Implementation/test files were not edited.
+
+Cloudflare's [D1 batch documentation](https://developers.cloudflare.com/d1/worker-api/d1-database/) specifies sequential transactional statements, with SQL errors rolling back the batch. A conditional UPDATE returning no row is still successful SQL and does not abort the batch. This review therefore compared all rows/all columns of **every CMS table**, not merely exceptions or pointer values. For interleaved winners, the baseline was captured after the winner's writes and before the loser's batch.
+
+**VERIFIED:** 15 successful additional in-memory concurrency/recovery/migration checks, plus an exact CSP check on all 12 rendered HTML pages:
+1. F1 stale inventory writer after activation: all tables unchanged.
+2. F1 write against verified inventory before activation: all tables unchanged.
+3. F1 genuine competing new-job lease takeover just before inventory batch: loser changes no table after winner.
+4. F1 duplicate inventory writer after first inventory write: all tables unchanged.
+5. F1 injected duplicate inventory key/SQL error: entire batch, including operation token, rolled back; all tables unchanged.
+6. F2 expired resume after content revision changed: all tables unchanged.
+7. F2 competing real new-job claim just before expired-resume batch: loser changes no table after winner.
+8. F2 legitimate building-job expiry: same job/snapshot, next fence exactly once, token cleared, successful subsequent activation.
+9. F2 legitimate verified-candidate expiry: safe resume and activation.
+10. F3 epoch change during awaited storage verification: losing rollback changes no table and leaves in-flight publisher intact.
+11. F3 actual new publish activation during awaited rollback verification: losing rollback changes no table after winner.
+12. F3 successful rollback and reverse rollback: active pointer swaps correctly; inventory and snapshots preserved.
+13. Migration 0004 applied to populated migration-0003 in-memory database: all old values/rows preserved; operation_token NULL; foreign_key_check empty and integrity_check ok.
+14. F2 same-idempotency-key competing resume stays building: losing resume changes no table after winner.
+15. F2 same-idempotency-key competing resume completes activation: losing resume changes no table after winner.
+
+These review programs are ephemeral checks and were not added to the repository. Hosted D1 concurrent-load behavior remains a staging validation boundary.
+
+### Individual findings disposition
+
+**F1 — FIXED (previous HIGH).**
+- `cms/publishing/release-pipeline.mjs:142–181`, `writeReleaseInventory`.
+- A single atomic claim requires current slot job/fence/lease, NULL operation token, building job with claimed/rendered phase, building version, expected source revision and publication epoch/active pointer.
+- Each subsequent inventory DELETE/INSERT, job/object-count update, manifest update and token clear depends on that same unpredictable per-batch token plus appropriate job/version state. No other request can interleave inside the D1 transaction. A losing claim cannot satisfy any downstream token predicate; zero-row results commit no writes.
+- Activated/verified versions and stolen fences were tested with complete database comparisons. Phase regression to rendered is rejected; the API avoids failPublishJob for recognized lost-fence/stale-content errors. No new operation-token race was demonstrated under these interleavings.
+
+**F2 — FIXED (previous HIGH).**
+- `cms/publishing/release-pipeline.mjs:29–59`, expired branch of `createPublishJob`.
+- Slot claim checks the observed owner/fence, expiry, global content revision, publication state and existing job state. Job/version reset, inventory deletion and token clear depend on the winning new token/fence inside the same batch.
+- Changed revision, a new competing job, and same-key competing resumes (including winner activation) all reject without additional database changes.
+- Valid expiry recovery works for both building and verified candidates. Snapshot is preserved, fence advances once, token clears, and candidate can activate. Migration 0004 is additive; old slot rows receive NULL token.
+
+**F3 — FIXED (previous HIGH).**
+- `cms/publishing/release-pipeline.mjs:287–330`, `rollbackPublishedRelease`; job invalidation at lines 314–316 now requires this rollback's successful transition_id.
+- Pointer/epoch, audit-success insertion, version metadata, job invalidation and slot/fence transition all depend on the winning transition. A losing rollback leaves every table unchanged after the competing transition.
+- The outer API intentionally may append a failure audit record after rejected rollback; that is expected audit behavior, not a partial pointer/job/slot mutation. Successful rollback and reverse rollback remain covered.
+
+**F4 — FIXED (previous MEDIUM), with a coverage limit noted.**
+- Local config line 27 uses `http://127.0.0.1:8787/_cms/public-media`, matching `worker.mjs:20`. Public routing accepts only the optimized published WebP namespace.
+- HTTP harness `tests/cms-local-runtime-check.mjs:135–148,213–222` uploads/reuses owner-upload media, associates it to a visible Gallery item with bilingual title/caption/alt, publishes before fetching the rendered image URL, and asserts public 200, WebP signatures/type, immutable cache and private-original 404.
+- The post-fix four consecutive PASS runs are user-reported evidence that this sequence ran successfully. Harness tests English Gallery's image GET and Chinese homepage/release consistency; it does not separately GET the uploaded-image tag on Chinese Gallery. This is a nonblocking coverage improvement; the shared bilingual renderer and bilingual input are inspected/tested.
+- One older direct publishing fixture at `tests/cms-publishing.test.mjs:272` still supplies the obsolete double-underscore base; it uses legacy media and does not exercise public uploaded delivery. This is LOW test-fixture cleanup, not the active local config or runtime harness.
+
+**F5 — FIXED (previous MEDIUM).**
+- `cms/publishing/api.mjs:103`, `serveReleaseObject`; `tests/cms-publishing.test.mjs:198`; HTTP harness lines 197–212.
+- Computed SHA-256 of the actual GA bootstrap on all **12** rendered EN/ZH pages exactly equals `NcJIkUciywrk/xnjzNolz6wY19tr9mymHpKfKlzfHSk=`, and served CSP contains its matching hash.
+- No `unsafe-inline` occurs in script-src; inline styles remain allowed in style-src as before. This does not allow arbitrary inline scripts. Browser telemetry/CTA delivery still requires staging browser verification.
+
+**F6 — FIXED (previous MEDIUM).**
+- `cms/auth/authorize.mjs:44–46` supplies canonical authorized subject; publishing API lines 22,45,54,85–86 now consistently consume `identity.subject`.
+- `tests/cms-publishing.test.mjs:300–315` exercises the authorized router: two snapshots and jobs, three successful publish/rollback audit records, and the GC report carry `local-test-owner`. This verifies real router identity handoff rather than only a direct fabricated API identity.
+
+### Validation and remaining findings
+
+- `node --test tests/*.test.mjs`: **49 passed, 0 failed** in this review.
+- Additional in-memory checks above: **15 passed**; rendered exact CSP check: **12/12 HTML pages passed**.
+- Relevant `node --check` commands and `git diff --check` passed. Git's existing LF/CRLF advisory warnings are not failures.
+- No build/deployment, durable migration/import, Wrangler/workerd process, or Cloudflare resource operation was run in this read-only review.
+- **No residual HIGH/MEDIUM implementation defect was demonstrated within F1–F6's scoped scenarios.** This is not a proof against all failures or a hosted readiness claim.
+- **LOW operational risk retained from prior review:** interrupted loopback HTTP harness can leave parking_note draft changed before its later restoration; release history and referenced media intentionally accumulate. Do not run this harness against staging/production or equate successful repeated runs with zero durable writes. No destructive garbage collection was introduced.
+- Prior first-run CSS failure's exact historical response remains unavailable. Empty-pointer regression coverage and subsequent passes support current behavior without proving the original forensic cause.
+- Existing JWT verification, active D1 allowlist, same-origin checks, local/public-host isolation, immutable SHA-256 manifests, optimistic RETURNING guards and Review QR protection pass the full suite.
+
+### Staging boundary and next action
+
+Local acceptance is justified; obtain the user's final Phase 3C sign-off before changing phase. No further local rerun is demanded solely by this documentation review.
+
+Staging remains a separate approval and validation gate:
+- Isolated Worker/config, D1 with all migrations and staging-only allowlist, private R2, public immutable derivative delivery hostname/bucket, real Access issuer/audience/policies and staging-only secrets. No automatic production/main deployment.
+- Hosted D1 RETURNING/batch/interleaving and lease-failure tests; R2 conditional writes, hash verification, owner-upload/CDN delivery; first activation/cold/multiple isolates, 3-second pointer-cache transitions and rollback.
+- Browser CSP/GA/CTA initialization, actual Access/JWKS rotation and failure handling.
+- Account plan, image-processing CPU/memory/concurrency suitability and safe upload limits remain unresolved hosted risks; Node/workerd functionality is not evidence of isolate resource capacity.
+- **Before staging:** remove temporary local D1 console instrumentation in a separately authorized cleanup, or at minimum exclude/disable it; staging must have CMS_LOCAL_AUTH and CMS_D1_DIAGNOSTICS unset. Current diagnostic activation still requires both explicit flags, loopback hostname, test-owned runtime-check category and authorization; it is not publicly client-enabled. No diagnostics were removed in this read-only task.
+- Retention growth, bounded pointer-cache staleness and interrupted-test draft recovery remain operational considerations, separately from local approval.
+
+### Git/documentation synchronization
+
+Source branch remains `codex/amuse-cms-phase-2`, HEAD `fbe81df0827a5604b7466d97e10f2864c21df78f`; CMS implementation stays uncommitted. Local main remains `218d180e9618f266b27fdd98bd2d60592fc836cc`; remote main was read at `ede5c0d61f3f92b30d459bd4d4bb66de55402d3a`. Only `project-brain/CURRENT_STATE.md` is synchronized to `docs/amuse-cms-shared-state` through GitHub's contents API. No implementation changes/push, main merge, deployment or Cloudflare resources.
