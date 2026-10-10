@@ -22,50 +22,48 @@ Operating Protocol.
 - **Phase 3A:** Approved and implemented locally.
 - **Phase 3B:** Approved and implemented locally.
 - **Phase 3C:** **PENDING.** The latest external real-workerd run failed during pre-test cleanup at the test-owned category DELETE, before the new PUT diagnostics could run. Do not begin staging or production work without explicit approval.
-- **Latest automated suite:** `node --test tests/*.test.mjs` — **43 passed, 0 failed**. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. `npm.cmd run build` was also attempted but this repository has no `build` script. These do not substitute for external workerd HTTP validation.
+- **Latest automated suite:** `node --test tests/*.test.mjs` — **43 passed, 0 failed**. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. `npm.cmd run build` was attempted but this repository has no `build` script. These do not substitute for external workerd HTTP validation.
 
-## Phase 3C local implementation recorded
+## Phase 3C implementation and verified D1 false-conflict fix
 
-The uncommitted local implementation includes migration `0003_release_integrity.sql`; deterministic bilingual snapshots and static rendering; immutable release artifacts and SHA-256 manifests; a resumable publishing pipeline; publication epoch, global content revision, and fencing; atomic activation; rollback and reverse rollback; audit records; report-only garbage-collection reports; JWKS size/refresh hardening; media revision/reuse protections; and Worker active-release serving.
+The uncommitted local Phase 3C implementation includes migration `0003_release_integrity.sql`; deterministic bilingual snapshots and static rendering; immutable release artifacts and SHA-256 manifests; a resumable publishing pipeline; publication epoch, global content revision, and fencing; atomic activation; rollback and reverse rollback; audit records; report-only garbage-collection reports; JWKS hardening; media protections; and Worker active-release serving.
 
-The local profile measured a synthetic 12 MP image at approximately **4.4 seconds elapsed, 4.3 seconds CPU, and 335.8 MiB peak RSS**. This is a **local Node/Photon measurement only**; it does not establish Cloudflare Workers compatibility. Image processing capacity remains a staging gate. Production upload limits were not changed.
+The latest real-workerd PUT evidence **proves** a false conflict: submitted category revision 1 matched the handler GET revision 1; `conflictBeforeSql=false`; guarded SQL executed successfully; D1 returned `success=true`, `meta.changes=2`; the persisted category revision advanced from 1 to 2 and submitted fields persisted; yet the repository rejected the mutation because it required aggregate `meta.changes === 1`. Migration `0003_release_integrity.sql` defines an AFTER UPDATE category trigger that updates `cms_content_clock`; the count of 2 is consistent with the target category plus this trigger write. The directly established defect is the repository’s reliance on an aggregate change count rather than evidence for the intended row.
 
-## External workerd failure and latest investigation
+**Specific fix:** guarded content UPDATE and DELETE statements retain their `id/page_key/section_key AND revision` predicates and now use `RETURNING` via D1 `.all()`. A mutation is accepted only when D1 reports success and returns exactly the intended target row; UPDATE also verifies revision advanced exactly once. No read-then-unguarded-write or retry was added. API contracts remain unchanged. Diagnostics now classify a genuine zero returned rows separately from an API pre-SQL stale revision or a returned-target/repository interpretation mismatch.
 
-**Latest external evidence (user-run real workerd):** Worker started at `127.0.0.1:8787`; bilingual public pages and Admin assets returned 200; private source/config paths returned 404; Review QR returned 503 (expected fail-closed locally without secrets). The pre-test cleanup category DELETE returned HTTP 409 `revision_conflict` at `tests/cms-local-runtime-check.mjs:64`. The cleanup read revision was 2, and the earlier listed revision was also 2. The test stopped before the new category PUT diagnostics could run, so there is no `cms_local_d1_category_put` record from this run.
+**Guarded mutation audit/fix coverage:**
+- `D1ContentStore.save/remove/reorder`: returned target row(s) now prove category/service/gallery/page/settings update, deletion, global content-clock CAS claim/clear, and exact reorder target set. No `meta.changes === 1` decision remains.
+- `D1MediaRepository.replace/updateMetadata/archiveUnused`: target media ID and next revision are checked from RETURNING rows. Replacement’s mutation-token guard, variant creation, and token clear are verified within its D1 batch.
+- Publishing claim/resume, job/version state changes, lease/fencing renewal, phase changes, release inventory/verification, activation, rollback, and guarded failure-state writes use returned row identity/state, expected epoch, and fencing token checks. Activation and rollback preserve their transaction/batch boundary and compare-and-swap predicates; a batch failure leaves the active pointer unchanged. No aggregate change count decides activation or rollback.
+- Non-guarded inserts, audit-only records, snapshot creation, and report-only GC were reviewed separately; they are not treated as optimistic target-row success checks.
 
-**Root cause:** **not yet proven.** Equal cleanup/list revisions do not establish what the API handler's own GET observed immediately before its revision check, whether DELETE SQL ran, what workerd D1 returned from `.run()`, or whether the row was deleted. The 409 could be an API pre-SQL revision mismatch or the repository rejecting the guarded DELETE result. There is no evidence yet that Node/SQLite and real workerd D1 mutation semantics differ, and no evidence about multiple Worker instances or local D1 databases.
+**Regression tests:** `tests/cms-content-api.test.mjs` simulates `meta.changes=2` after a current revision UPDATE and DELETE while returning one target row; both succeed, UPDATE advances once, and fields persist. It also verifies stale UPDATE/DELETE return 409 without mutation, no returned target cannot be reported as success, local diagnostics classify outcomes correctly, and public-host/client-toggle isolation remains. Content, media, and publishing Node SQLite adapters simulate trigger-inclusive metadata for DML RETURNING. Existing publishing suites exercise concurrent claims, stale epoch/fence rejection, atomic activation, rollback, reverse rollback, and injected batch failure. Review QR and authorization coverage remains included in the full suite.
 
-**Verified source contract and exact generated category UPDATE:** the handler first reads the current category and returns 409 if the submitted integer revision differs. If equal, `D1ContentStore.save` runs this category statement (bound values omitted):
+**Exact files changed for this D1 interpretation fix:**
+- `cms/content/store.mjs`
+- `cms/content/api.mjs`
+- `cms/media/repository.mjs`
+- `cms/publishing/release-pipeline.mjs`
+- `tests/cms-content-api.test.mjs`
+- `tests/cms-media-api.test.mjs`
+- `tests/cms-publishing.test.mjs`
 
-```sql
-UPDATE cms_service_categories
-SET anchor = ?, name_en = ?, name_zh = ?, sort_order = ?, visible = ?, content_status = ?,
-    revision = revision + 1, updated_at = CURRENT_TIMESTAMP
-WHERE id = ? AND revision = ?
+**Automated validation:** `node --test tests/*.test.mjs` — **43 passed, 0 failed**; `npm.cmd run build:assets` passed; `git diff --check` passed; relevant `node --check` commands passed. The requested `npm.cmd run build` reports `Missing script: "build"`; there is no such package script. No test reset, deleted, or re-imported local D1/R2 data. The previous real-workerd PUT did persist revision 2; the local harness uses its test-owned fixture and observes current revisions rather than assuming revision 1.
+
+**Diagnostics:** narrowly scoped server-side local-only PUT/DELETE diagnostics remain temporarily. They require explicitly enabled local auth and diagnostics config, loopback hostname, and the test-owned category identity/anchor. They do not have a client header/query switch or endpoint, do not change API responses, and log no secrets or unrelated content. Diagnostics remain until external workerd validation passes.
+
+**Remaining validation:** Node SQLite RETURNING tests do not prove Wrangler/workerd D1 HTTP runtime behavior. External local workerd validation is still **PENDING**; Phase 3C remains **PENDING**. The local Worker must be restarted to load the new code. No migration, import, database reset, or D1/R2 deletion is required.
+
+**Next external PowerShell commands:** from the repository root, start PowerShell window #1 with:
+```powershell
+npm.cmd run cms:dev:local
 ```
-
-The adapter then checks `result.success` and `result.meta?.changes === 1`; if either check fails it returns null, which the API maps to 409. On success it performs a GET and returns the saved row. **Observed real D1 mutation result shape/metadata:** not supplied. **Whether the SQL changed the row:** not observed; do not infer from the HTTP response alone, because 409 is returned both before SQL and after an unsuccessful guarded update. Category creation returned revision 1, and the harness’s pre-PUT read also yielded revision 1; the API’s internal pre-update GET and any post-failure GET were not reported.
-
-**Implementation/test changes in this update:** `cms/content/api.mjs` now instruments the test-owned category DELETE after its handler GET and around the unchanged revision comparison; `cms/content/store.mjs` records the actual guarded DELETE SQL execution and safe result metadata; `tests/cms-content-api.test.mjs` covers pre-SQL mismatch, genuine zero-row deletion, and a deliberately simulated metadata/reporting disagreement; `tests/cms-local-runtime-check.mjs` prints the category ID, submitted cleanup revision, both observed read revisions, and a pointer to the Worker diagnostic event when cleanup fails. The cleanup is still asserted and never skipped. Existing PUT diagnostics remain. The test suite uses Node’s SQLite-backed adapter and does not establish real-workerd HTTP behavior. No authorization, revision, epoch, fencing, or other security guard was weakened.
-
-**Local-only D1 diagnostics implemented:** PUT and DELETE records are emitted only by server-side Worker code for the test-owned `runtime-check` category. The existing PUT record is `cms_local_d1_category_put`; the new cleanup record is `cms_local_d1_category_delete`. DELETE records include category ID, submitted and handler-observed revisions, pre-SQL conflict flag, exact guarded SQL, safe `{id, revision}` bindings, whether `.run()` was invoked/resolved, actual `success`, `meta.changes`, allowlisted safe metadata, repository interpretation, whether the row remains, its revision if present, and classification. The API response body/status contract is unchanged. No row content or credentials are logged.
-
-Diagnostics require **all** of: `CMS_LOCAL_AUTH="true"`, `CMS_D1_DIAGNOSTICS="true"`, a loopback request hostname (`127.0.0.1`, `localhost`, or `::1`), and the persisted test category anchor/ID shape. The flag remains only in `wrangler.cms.local.jsonc`; no client header/query switch or diagnostic endpoint exists, and public hostnames do not log. Temporary local diagnostics remain intentionally enabled for this investigation.
-
-PUT classifications are **A** API pre-update revision mismatch, **B** successful mutation evidenced by persisted fields/revision but rejected metadata, **C** reported success with zero changes and no field change persisted, or **D** other/inconclusive; successful update is `update_succeeded`. DELETE classifications are **A** API pre-delete revision mismatch, **B** D1 reports success with a change count other than one but the row is gone, **C** D1 reports success with zero changes while the same-revision row remains, or **D** other/inconclusive. A resolved `.run()` plus row readback distinguishes these cases; thrown `.run()` is marked execution unknown.
-
-**D1 result semantics:** both `D1ContentStore.save` (UPDATE) and `D1ContentStore.remove` (DELETE) accept the mutation only when `result.success` is truthy and `result.meta?.changes === 1`; neither uses a strict boolean comparison. The Node SQLite adapter exposes `success: true` and numeric `meta.changes` in automated tests. Cloudflare D1’s documented result shape also uses boolean `success` and numeric `meta.changes`, but this source/documentation comparison does **not** prove runtime parity. The failing workerd DELETE’s actual result remains unobserved. The guarded category DELETE is `DELETE FROM cms_service_categories WHERE id = ?1 AND revision = ?2`, bound to the test category ID and submitted revision. A missing row after a reported zero-change DELETE would be consistent with metadata interpretation mismatch, but by itself cannot prove that this statement caused the deletion if another concurrent mutation existed. No semantic mismatch or root cause is proven.
-
-**Automated validation after the DELETE diagnostic change:** `node --test tests/*.test.mjs` — **43 passed, 0 failed**; `npm.cmd run build:assets` passed; `node --check` passed for `cms/content/api.mjs`, `cms/content/store.mjs`, `tests/cms-content-api.test.mjs`, and `tests/cms-local-runtime-check.mjs`; `git diff --check` passed. The requested `npm.cmd run build` was attempted and reported `Missing script: "build"`; this repository has no such script. No workerd run was attempted in the sandbox. The external real-workerd HTTP rerun is still required.
-
-### Real HTTP/workerd coverage status
-
-Latest run verified baseline English/Chinese pages, Admin assets, CMS source/config exclusion, and fail-closed Review QR behavior, then failed during pre-test category cleanup DELETE with 409 before PUT diagnostics. Later media/R2, preview, publish, activation, rollback, and post-rollback HTTP checks remain pending.
-
-**Sandbox runtime attempt:** `npm.cmd run cms:dev:local` did not start workerd here. Wrangler 4.147.0 failed while bundling with `Cannot read directory "../../../../..": Access is denied` and also could not write its log under `C:\Users\abbyl\.wrangler\logs` (`EPERM`). No security restrictions were bypassed. No local HTTP/workerd validation is claimed.
-
-**Next external local commands:** restart the local server so it loads the DELETE diagnostic code. In PowerShell window #1, from the repository root, run `npm.cmd run cms:dev:local`. In PowerShell window #2, run `npm.cmd run test:cms:local`. If cleanup DELETE again returns 409, preserve both windows: window #1 should show `cms_local_d1_category_delete` with the handler revision, SQL/run result and row readback; window #2 reports the exact category ID and submitted/listed/read revisions. If cleanup succeeds, the harness proceeds to PUT; preserve its output and any `cms_local_d1_category_put` record. No migration or import is required. Do not reset, wipe, delete, or manually alter local D1/R2 data. Run only against loopback. Phase 3C remains **PENDING** until the full real-workerd runtime validation passes.
+Then run window #2:
+```powershell
+npm.cmd run test:cms:local
+```
+Keep both outputs, especially any `cms_local_d1_category_put` or `cms_local_d1_category_delete` diagnostic event. The harness must report successful current-revision category UPDATE/DELETE behavior and continue through publish/activation/rollback checks. Do not reset or re-import local D1/R2 data. Phase 3C stays **PENDING** until the real-workerd runtime passes.
 
 ## Verified architecture and security decisions
 
