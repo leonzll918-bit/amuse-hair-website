@@ -21,7 +21,7 @@ Operating Protocol.
 
 - **Phase 3A:** Approved and implemented locally.
 - **Phase 3B:** Approved and implemented locally.
-- **Phase 3C:** **PENDING final approval — recommendation C (block pending corrections).** User reports 4 successful real local workerd runs, including 3 consecutive recent passes. The final read-only review reproduced concurrency defects; see the authoritative final-review section below. No staging or production authorization.
+- **Phase 3C:** **PENDING external real-workerd validation after focused F1–F6 corrections.** Local implementation and automated validation are complete for this correction pass. No staging or production authorization.
 - **Latest automated suite:** `node --test tests/*.test.mjs` — **49 passed, 0 failed** after the focused F1–F6 fixes. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. No real workerd HTTP run was performed in this correction pass.
 
 Historical D1/CSS investigation sections below retain earlier evidence and commands; their pending-runtime statements are superseded by the final review and the 4 user-reported successful runs.
