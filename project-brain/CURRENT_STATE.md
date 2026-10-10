@@ -1,6 +1,6 @@
 # Amuse Hair Studio — Current Project State
 
-Last updated: 2026-10-10 Asia/Singapore.
+Last updated: 2026-10-11 Asia/Singapore.
 
 This file is the concise shared status for ChatGPT ↔ Codex handoffs. It records
 verified evidence separately from pending checks and planned work. It is not a
@@ -13,7 +13,7 @@ Operating Protocol.
 - **Repository:** `amuse-hair-website`.
 - **Verified local branch:** `codex/amuse-cms-phase-2`.
 - **Verified local HEAD:** `fbe81df0827a5604b7466d97e10f2864c21df78f` (`Remove temporary review configuration diagnostics`).
-- **Working tree:** CMS implementation and related files are uncommitted. The shared `project-brain/` and `.agents/` directories are also untracked. No CMS implementation is included in a commit.
+- **Working tree:** CMS implementation and related files remain uncommitted; pre-review status was preserved. Shared-state documentation is maintained separately on docs/amuse-cms-shared-state. No CMS implementation is included in a commit.
 - **Production/main:** No production deployment, main merge, or CMS code push was performed for the current CMS work. Local `main` is at `218d180`; local `origin/main` is `ede5c0d` and the local main ref is behind it. No Git fetch of main refs was performed; shared-state synchronization was confined to the docs branch.
 - **Resources:** No staging deployment and no production CMS D1, R2, or Access resources have been created. Production configuration was not modified.
 
@@ -21,8 +21,10 @@ Operating Protocol.
 
 - **Phase 3A:** Approved and implemented locally.
 - **Phase 3B:** Approved and implemented locally.
-- **Phase 3C:** **PENDING.** The latest external real-workerd run failed during pre-test cleanup at the test-owned category DELETE, before the new PUT diagnostics could run. Do not begin staging or production work without explicit approval.
+- **Phase 3C:** **PENDING final approval — recommendation C (block pending corrections).** User reports 4 successful real local workerd runs, including 3 consecutive recent passes. The final read-only review reproduced concurrency defects; see the authoritative final-review section below. No staging or production authorization.
 - **Latest automated suite:** `node --test tests/*.test.mjs` — **44 passed, 0 failed**. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. `npm.cmd run build` was attempted but this repository has no `build` script. These do not substitute for external workerd HTTP validation.
+
+Historical D1/CSS investigation sections below retain earlier evidence and commands; their pending-runtime statements are superseded by the final review and the 4 user-reported successful runs.
 
 ## Phase 3C implementation and verified D1 false-conflict fix
 
@@ -92,6 +94,104 @@ Then PowerShell window #2:
 npm.cmd run test:cms:local
 ```
 This is the script name present in the current `package.json` (the reported `test:cms` alias is not defined there). Keep both outputs. Phase 3C remains **PENDING** until this complete real-workerd run succeeds.
+
+## Final Phase 3C read-only review — 2026-10-11
+
+**Recommendation: C — BLOCK final local approval pending specific corrections. Phase 3C remains PENDING.** Staging is not authorized or ready; production is not authorized. Four successful local HTTP runs do not override reproduced concurrency failures.
+
+### Evidence and validation
+
+- **USER-REPORTED external evidence:** the complete real local workerd runtime test passed **4 times total, including 3 consecutive recent passes**. No external workerd rerun was performed by this review. The previous category RETURNING blockers and CSS assertion no longer fail in those reported runs.
+- **VERIFIED in this review:** unchanged automated suite: `node --test tests/*.test.mjs` — **44 passed, 0 failed**, exit 0. Relevant `node --check` commands passed for Worker, publishing pipeline/API/renderer, content store, media repository, and HTTP harness. `git diff --check` passed (only existing LF/CRLF advisory warnings).
+- Additional read-only experiments executed the actual release-pipeline functions using the existing Node SQLite D1 adapter and fresh **in-memory databases only**. No durable local D1/R2 was accessed, reset, imported or altered. These are deterministic interleaving reproductions, not Cloudflare/workerd results and not new committed regression tests.
+- No implementation files were edited; no build, deployment, migration or import was run. Only this documentation is changed.
+- Source/working tree: `codex/amuse-cms-phase-2`, HEAD `fbe81df0827a5604b7466d97e10f2864c21df78f`; existing uncommitted CMS files unchanged by review. Local main remains `218d180e9618f266b27fdd98bd2d60592fc836cc`. No tracked .env/.dev.vars files were returned by Git; both patterns are ignored.
+
+### Findings
+
+No CRITICAL finding was established. Findings below distinguish observed defects from deployment-readiness risks.
+
+**F1 — HIGH: stale inventory writer can alter an already activated release's D1 inventory.**
+- File/function: `cms/publishing/release-pipeline.mjs:128-150`, `writeReleaseInventory`.
+- Evidence: fence validation is a separate awaited operation; the later batch unconditionally DELETEs/inserts inventory before guarded job/version updates. In-memory reproduction activated the same job between fence validation and the inventory batch. The call threw `release_inventory_write_failed`, but the active verified release's inventory increased to **2 objects while expected_object_count remained 1**. A separate stolen-fence reproduction likewise persisted a new inventory object after rejection.
+- Scenario/impact: a same-idempotency-key concurrent request can share the current job/fence, complete activation, then have its verified inventory overwritten by the delayed request. Lease takeover is another stale-writer route. Immutable R2 bytes were not overwritten in this reproduction, but verified inventory/retention and future activation/rollback consistency are compromised.
+- Blocks local approval: **YES**. Blocks staging: **YES**.
+- Correction: make every inventory write conditional on the same current slot/job/fence/lease/building-state ownership inside its transaction; ensure a failed guard makes the entire transition a no-op or aborts it. Protect verified/activated inventory from mutation and add these exact interleaving tests. A JavaScript throw after batch completion is insufficient.
+
+**F2 — HIGH: rejected expired-job resume commits destructive side effects.**
+- File/function: `cms/publishing/release-pipeline.mjs:29-48`, expired-lease branch of `createPublishJob`.
+- Evidence: only the first batch statement checks slot CAS, source revision and publication epoch. Job/version resets and inventory DELETE are not dependent on claim success. Reproduction: build inventory, expire lease, increment content clock, retry same key. Result: `publish_job_not_resumable`; **slot fence remained 1, job fence became 2/phase claimed, inventory count became 0**.
+- Scenario/impact: a normal content edit before retry, or another contender winning the claim, causes rejected recovery to damage the candidate and leave job/slot inconsistent. Under activation interleaving the unconditional inventory deletion can also affect a release completed by another request.
+- Blocks local approval: **YES**. Blocks staging: **YES**.
+- Correction: gate every resume statement on the successful claim's unique ownership/transition marker, or abort the whole batch if claim fails; preserve old inventory/state on rejected resume.
+
+**F3 — HIGH: rollback losing CAS still invalidates a publisher.**
+- File/function: `cms/publishing/release-pipeline.mjs:248-280`, `rollbackPublishedRelease`, especially job-stale UPDATE at line 276.
+- Evidence: pointer/audit/version/slot writes use transition_id, but the job-stale UPDATE does not. Reproduction changed publication_epoch during awaited storage verification, so pointer CAS failed. Function threw `Release changed before rollback could activate`, yet the building job became **stale / rollback_invalidated**, and its slot remained claimed.
+- Scenario/impact: concurrent publish/rollback or competing rollback wins the epoch race; losing rollback unexpectedly cancels another publish and leaves stale-job lease state.
+- Blocks local approval: **YES**. Blocks staging: **YES**.
+- Correction: gate stale-job invalidation on this rollback's successful transition_id within the same batch; test losing rollback is a no-op for all state, not only the active pointer.
+
+**F4 — MEDIUM: local published owner-upload URLs use a nonexistent route.**
+- File/function: `wrangler.cms.local.jsonc:27`; `ReleaseStorage.publishMediaVariant` in `cms/publishing/storage.mjs`; `releaseRequest` in `worker.mjs:20`.
+- Evidence: configured base is `http://127.0.0.1:8787/__cms/public-media` (two underscores), whereas Worker matches `/_cms/public-media` (one). Read-only Worker simulation with a present public object returned **404 for configured prefix**, **200 for supported prefix**. The runtime harness archives its uploaded-media fixture before publishing, so its PASS does not cover published owner uploads.
+- Scenario/impact: publish a visible Gallery/Hair Colour item using owner-upload media; HTML references a URL that falls through to ASSETS.
+- Blocks local approval: **YES**, functional publish gap. Blocks staging: **YES until staging delivery base is correctly configured and end-to-end tested**; this local typo alone does not prove an external R2 hostname fails.
+- Correction: align local base with actual route and add upload → associate → publish → public image GET coverage; staging must use its own public derivative delivery endpoint.
+
+**F5 — MEDIUM: release CSP blocks the preserved inline GA initialization.**
+- File/function: `cms/publishing/api.mjs:97-103`, `serveReleaseObject`; inline initialization retained by renderer from `index.html:19` and `zh/index.html:19`.
+- Evidence: script-src permits self and googletagmanager but has no nonce/hash/inline allowance; rendered templates retain inline dataLayer/gtag configuration. Browser CSP semantics block that inline bootstrap. This is source/policy evidence; browser telemetry was not run in this review.
+- Scenario/impact: baseline GA configuration/CTA measurement stops initializing on activated pages despite successful HTML/CSS HTTP checks.
+- Blocks local approval: **YES**, required existing-site behavior preservation. Blocks staging acceptance: **YES**.
+- Correction: authorize only the known bootstrap with a matching CSP hash or move it to a trusted versioned external script; retain strong CSP. Add browser-level GA/CTA initialization regression coverage.
+
+**F6 — MEDIUM: publication/audit actor is silently lost.**
+- File/function: `cms/auth/authorize.mjs:46` returns identity.subject; `cms/publishing/api.mjs:22,45,54,85-86`, `handleCmsPublishingApi`, reads identity.sub.
+- Evidence: actual local authorization returned `{subject:"local-test-owner",email:"owner@local.test"}`; publication actor expression evaluated to undefined/null. Direct publishing tests pass `{sub:"owner"}`, masking the real router contract.
+- Scenario/impact: authenticated publishing, rollback, snapshots and GC audit records omit the administrator identity. Authentication itself remains enforced; this is an accountability defect.
+- Blocks local approval: **NO independently**. Blocks staging acceptance: **YES**.
+- Correction: use the canonical subject field consistently and test the complete authorized router-to-publishing path with non-null audit actors.
+
+**F7 — MEDIUM: image resource suitability remains unproven (staging gate).**
+- File/function: `cms/media/image-processor.mjs`, `processUploadedImage/toVariant`; `scripts/cms/profile-image.mjs`.
+- Evidence: accepts up to 12 MP / 15 MiB and synchronously decodes/resizes/encodes three WASM variants. Local tests establish function, not Workers resource compliance. Earlier reported Node RSS/CPU profiling is not an isolate-memory measurement. Current Cloudflare documentation specifies 128 MB per isolate including WASM, Free CPU 10 ms, Paid default 30 seconds (configurable up to 5 minutes).
+- Scenario/impact: large or concurrent authenticated uploads may exhaust isolate memory/CPU; actual hosted failure is **not proven**.
+- Blocks local approval: **NO independently**. Blocks staging readiness for image processing: **YES until a safe plan and limits are validated**.
+- Correction: select/verify the staging plan, measure realistic worst-case image processing and concurrent load, and reduce limits or isolate/offload processing if needed. Paid CPU does not raise the memory ceiling.
+
+**F8 — LOW: interrupted HTTP harness can leave a non-fixture draft edited.**
+- File/function: `tests/cms-local-runtime-check.mjs:213-221`, top-level parking-note mutation/restoration.
+- Evidence: writes existing parking_note to Local runtime update, then restores its saved value only after second publish and rollback succeed; no finally restoration surrounds that section.
+- Scenario/impact: failure/interruption before restoration leaves a changed local draft; next run can capture that changed value as its baseline. Successful runs restore the saved draft, while release history intentionally accumulates.
+- Blocks local approval: **NO independently**. Blocks staging: **NO; this loopback-only harness must not target staging**.
+- Correction: use robust guarded restoration/recovery tracking or a disposable test-owned content fixture, without wiping data or overwriting a concurrent editor. Do not equate repeatable PASS with zero durable side effects.
+
+**F9 — LOW: original first-run CSS failure has incomplete forensic evidence.**
+- File/function: `worker.mjs:33-40`, active-pointer cache; `tests/cms-local-runtime-check.mjs:23-35`, `waitForReleasePage`.
+- Evidence: empty-pointer caching was demonstrably fixed and regression-tested; renderer/manifest/store/Worker agree on `/_cms/releases/<release-id>/assets/styles.css` → `releases/<release-id>/assets/styles.css`. Original failing response HTML was not captured. Four reported later passes support current local behavior but cannot prove that historical cause.
+- Blocks local approval: **NO independently**. Blocks staging: **NO independently**, but first-activation/cold-start checks are required before staging acceptance.
+- Correction: preserve observed hrefs/active ID on future failure; explicitly validate first activation from null, warm replacement and rollback across cold/multiple isolates. Do not loosen the versioned-CSS assertion.
+
+### Verified boundaries and practical limits
+
+- Content UPDATE/DELETE retain atomic ID/composite-key + revision guards and use returned target identity; UPDATE requires next revision exactly once. Media guarded replacement/metadata/archive use returned identity/revision and mutation-token guards. Searches found no remaining aggregate meta.changes success decision; it remains diagnostic metadata only. Zero returned rows are rejected. Trigger-inclusive metadata is simulated by existing tests.
+- Snapshots are transactionally captured, bounded, SHA-256 checked, and protected by immutable update/delete triggers. Immutable R2 puts use conditional creation plus collision hash checks; verification reads bytes and checks inventory manifest hashes before activation. SQL errors roll back a D1 batch; **zero-row guards do not cause SQL errors**. F1–F3 qualify earlier broad claims that all batch transitions were safe.
+- Main activation pointer CAS includes content revision, expected active release/epoch, verified state, inventory count and leased fencing ownership. Injected SQL/R2/render failures in existing tests preserve the pointer. The verified defects concern surrounding inventory/recovery/losing-rollback transitions.
+- Review QR checks remain before release serving. JWT verification requires RS256, matching issuer/audience, valid exp/nbf and verified signature; bounded JWKS fetch/cache and active subject+email D1 allowlist remain. Same-origin checks guard mutations. Local auth requires explicit server config plus loopback; diagnostics additionally require explicit diagnostic config and a test-category identity. No public-host bypass or diagnostic endpoint was found.
+- Private originals/drafts and private preview variants remain behind authenticated CMS APIs; manifests/server/config files are excluded from static output/public release routes. Public derivatives are content-addressed, immutable and intended for unauthenticated public delivery. A short pre-activation public marketing-derivative window is already accepted.
+- Empty active pointers are not cached. Nonempty pointers have a 3-second per-isolate cache; publish/rollback can therefore serve the prior intact release briefly. Separate EN/ZH requests across isolates can straddle a transition, but each rendered page references its own release's CSS/JS. Missing active pages return 503; missing versioned assets return 404 rather than baseline fallback. Staging must verify CDN/browser behavior and aliases in real Assets routing.
+- No destructive GC exists in the publishing report path. Active/previous releases and immutable history are retained; reverse rollback passes. Storage/snapshot history grows without a deletion policy. F8 qualifies claims about interrupted runtime-test data safety.
+
+### Staging boundary and next action
+
+**Next action: obtain authorization for a narrow correction pass for F1–F6, then rerun automated/interleaving and external local HTTP checks. No implementation changes were authorized or made in this read-only review.** No migration/import/reset is needed merely to rerun the current local harness. Restart the local Worker after any future code/config fix.
+
+Staging requires separate explicit authorization and isolated Worker/deployment configuration; ASSETS with run_worker_first; separate CMS_DB/D1 migrations and allowlist; private R2 with public access disabled; distinct public-derivative R2/CDN delivery URL; staging Access application/team/audience/policy covering Admin and CMS APIs; staging-only Review QR secrets; local auth/diagnostics unset; secrets via bindings; and no automatic main/production deployment. Nothing was provisioned.
+
+Before staging acceptance, validate hosted D1 RETURNING and actual interleaving/transaction failures, R2 conditional writes/byte integrity, same-key publish duplication/recovery, cold first activation and pointer cache behavior, concurrent rollback, authenticated owner-upload publishing and public CDN delivery, browser CSP/GA behavior, resource limits, and real Access/JWKS rotation/failure behavior. No staging or production authorization is implied by local acceptance or this review.
+
+Reference semantics checked: [Cloudflare D1 batch transactions](https://developers.cloudflare.com/d1/worker-api/d1-database/), [Workers resource limits](https://developers.cloudflare.com/workers/platform/limits/), [CSP script-src inline rules](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src).
 
 ## Verified architecture and security decisions
 
