@@ -14,7 +14,7 @@ Operating Protocol.
 - **Verified local branch:** `codex/amuse-cms-phase-2`.
 - **Verified local HEAD:** `fbe81df0827a5604b7466d97e10f2864c21df78f` (`Remove temporary review configuration diagnostics`).
 - **Working tree:** CMS implementation and related files are uncommitted. The shared `project-brain/` and `.agents/` directories are also untracked. No CMS implementation is included in a commit.
-- **Production/main:** No production deployment, main merge, or push was performed for the current CMS work. Local `main` is at `218d180`; local `origin/main` is `ede5c0d` and the local main ref is behind it. No remote fetch was performed for this update.
+- **Production/main:** No production deployment, main merge, or CMS code push was performed for the current CMS work. Local `main` is at `218d180`; local `origin/main` is `ede5c0d` and the local main ref is behind it. No Git fetch of main refs was performed; shared-state synchronization was confined to the docs branch.
 - **Resources:** No staging deployment and no production CMS D1, R2, or Access resources have been created. Production configuration was not modified.
 
 ## CMS phase status
