@@ -22,7 +22,7 @@ Operating Protocol.
 - **Phase 3A:** Approved and implemented locally.
 - **Phase 3B:** Approved and implemented locally.
 - **Phase 3C:** **PENDING final approval — recommendation C (block pending corrections).** User reports 4 successful real local workerd runs, including 3 consecutive recent passes. The final read-only review reproduced concurrency defects; see the authoritative final-review section below. No staging or production authorization.
-- **Latest automated suite:** `node --test tests/*.test.mjs` — **44 passed, 0 failed**. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. `npm.cmd run build` was attempted but this repository has no `build` script. These do not substitute for external workerd HTTP validation.
+- **Latest automated suite:** `node --test tests/*.test.mjs` — **49 passed, 0 failed** after the focused F1–F6 fixes. `npm.cmd run build:assets`, relevant `node --check` commands, and `git diff --check` passed. No real workerd HTTP run was performed in this correction pass.
 
 Historical D1/CSS investigation sections below retain earlier evidence and commands; their pending-runtime statements are superseded by the final review and the 4 user-reported successful runs.
 
@@ -219,3 +219,42 @@ After each meaningful Amuse implementation, bug fix, architecture/security revie
 Label statements **VERIFIED**, **PENDING**, or **PLANNED** as appropriate. Never report planned work as completed. Keep detailed architecture in its authoritative audit and link to it rather than copying it here. Never include secrets, tokens, credentials, Access assertions, signing keys, or `.dev.vars` values.
 
 When syncing this document to GitHub while implementation remains unfinished, isolate the documentation change on a separate documentation branch and commit only `project-brain/CURRENT_STATE.md`. Do not merge to `main`, and verify the staged file list before committing or pushing. Production deployment still requires separate explicit approval.
+
+
+## Phase 3C focused review corrections — 2026-10-11 Asia/Singapore
+
+**Status: local correction pass implemented; Phase 3C remains PENDING external real-workerd validation.** The earlier read-only review's six findings F1–F6 were addressed locally. No Phase 3B/other scope, staging, production, Cloudflare resource, deployment, push of CMS code, or main merge was performed. The user-reported four prior successful workerd runs predate these fixes and do not validate them.
+
+### Corrections and files
+
+- **F1 — stale release inventory writer:** `cms/publishing/release-pipeline.mjs` now claims a unique per-batch operation token only while the current slot/job/fence/lease, source revision, epoch, active release, and building states match. All inventory deletion/inserts, object-count and manifest changes depend on that token within one D1 batch; a losing claim throws `publish_fence_lost` before touching inventory. Verification requires returned target rows. Stale API catch handling no longer marks a job failed after `publish_fence_lost` or stale content. Phase progression cannot regress an objects-written job to rendered.
+- **F2 — rejected expired resume:** resume uses a fresh operation token and gates reset of the job, version, inventory and token clear on the winning slot claim and expected old state in one batch. A losing/stale claimant leaves inventory and job state unchanged.
+- **F3 — rollback losing CAS:** rollback's in-flight job invalidation now depends on the same winning `transition_id`; losing rollback cannot stale the competing publisher.
+- **F4 — local public media path and coverage:** `wrangler.cms.local.jsonc` now uses the Worker-supported `/_cms/public-media` route. The runtime test retains an uploaded fixture, associates it with visible bilingual Gallery content, publishes it and checks unauthenticated public GET, WebP type and immutable caching. Fixture cleanup removes its Gallery row; referenced media is retained to avoid unsafe archival against release history.
+- **F5 — release CSP / GA:** `cms/publishing/api.mjs` allows only the existing inline GA bootstrap using its exact SHA-256 CSP hash, without adding `unsafe-inline` to `script-src`. Renderer tests verify EN/ZH release HTML and served CSP contain the matching hash.
+- **F6 — audit actor identity:** publishing/rollback/snapshot/GC audit calls consistently use the canonical `identity.subject`. An authorized router-to-publishing test asserts the subject is recorded in snapshots, jobs, rollback audit and GC reports.
+- **Migration:** new `cms/migrations/0004_publish_operation_token.sql` adds nullable operation-token state to the local CMS publish slot. `cms/README.md` documents it. The external local D1 database must apply this migration before runtime validation; this is additive and does not reset/re-import/delete existing D1/R2 data.
+- **Files changed in this correction pass:** `cms/migrations/0004_publish_operation_token.sql`; `cms/publishing/release-pipeline.mjs`; `cms/publishing/api.mjs`; `wrangler.cms.local.jsonc`; `cms/README.md`; `tests/cms-publishing.test.mjs`; `tests/cms-media-api.test.mjs`; `tests/cms-foundation.test.mjs`; `tests/cms-content-api.test.mjs`; `tests/cms-local-runtime-check.mjs`. Existing Phase 3C files remain uncommitted on `codex/amuse-cms-phase-2`; no CMS code was pushed.
+
+### Validation results and boundary
+
+- **VERIFIED locally:** `node --test tests/*.test.mjs` — **49 passed, 0 failed**.
+- **VERIFIED locally:** `npm.cmd run build:assets` succeeded.
+- **VERIFIED locally:** `git diff --check` succeeded (Git emitted only LF→CRLF advisory warnings); `node --check` succeeded for `worker.mjs`, publishing pipeline/API, and relevant publishing/runtime test modules.
+- No real Wrangler/workerd run was performed in this correction pass. It remains essential because operation-token D1 batch behavior, actual Worker runtime media delivery, and release CSP must be checked over HTTP. Root causes F1–F6 were supported by the preceding review's reproductions/source evidence; these corrections have Node regression coverage but are not externally validated yet.
+- Temporary loopback-only D1 diagnostics remain pending successful external workerd verification. No secrets are part of diagnostics.
+- **Worker restart:** yes, stop and restart the running local Worker after applying the migration, so the new code/config is loaded.
+- **Import/reset:** no content import, database reset, R2 wipe or deletion is required or requested. Apply only the additive local migration.
+
+### Exact next external PowerShell commands
+
+From the repository root, in PowerShell window #1:
+```powershell
+npm.cmd run cms:migrate:local
+npm.cmd run cms:dev:local
+```
+In PowerShell window #2:
+```powershell
+npm.cmd run test:cms:local
+```
+The migration command applies pending local schema only and preserves records. Keep the complete test output. A pass must reach the end of the HTTP harness, including the owner-upload → bilingual Gallery association → publish → public derivative GET and release/rollback checks. If it fails, retain diagnostics and do not reset/re-import local data. Phase 3C remains **PENDING** until this real-workerd run passes. Staging and production remain unauthorized.
